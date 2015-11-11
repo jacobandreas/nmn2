@@ -1,0 +1,23 @@
+version: 1.0
+
+root:
+  handlers: [consoleHandler, fileHandler]
+  level: DEBUG
+
+handlers:
+  consoleHandler:
+    class: logging.StreamHandler
+    formatter: colorFormatter
+    stream: ext://sys.stdout
+
+  fileHandler:
+    class: logging.FileHandler
+    formatter: simpleFormatter
+
+formatters:
+  colorFormatter:
+    '()': 'colorlog.ColoredFormatter'
+    format: "%(asctime)s %(log_color)s%(levelname)-8s%(reset)s %(fg_cyan)s[%(name)s]%(reset)s %(message)s"
+
+  simpleFormatter:
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

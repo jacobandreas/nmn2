@@ -1,0 +1,27 @@
+task:
+  name: cocoqa
+  pad_to_width: 20
+  pad_to_height: 20
+
+model:
+  name: nmn
+  include_reading_module: true
+  load_lstm: saves_old/cocoqa_lstm_10.caffemodel
+  train_lstm: true
+  hidden_size: 500
+  #image_features: 64
+
+  # for best color results:
+  # image_features: 32
+
+opt:
+  batch_size: 64
+  batch_by: layout
+  learning_rate: 0.001
+  momentum: 0.9
+  clip: 10
+  iters: 1001
+
+  rho: 0.95
+  epsilon: 0.00001
+  lr: 0.1
