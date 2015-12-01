@@ -1,12 +1,12 @@
 task:
-  name: vqa
+  name: cocoqa
   #debug: 1024
 
 model:
   name: nmn
   lstm_hidden: 500
-  att_hidden: 100
-  #pred_hidden: 100
+  att_hidden: 200
+  pred_hidden: 200
 
 opt:
   batch_size: 100

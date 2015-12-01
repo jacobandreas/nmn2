@@ -5,14 +5,14 @@ from util import Index
 UNK = "*unknown*"
 NULL = "*null*"
 
-STRING_INDEX = Index()
-LAYOUT_INDEX = Index()
+QUESTION_INDEX = Index()
+MODULE_INDEX = Index()
 ANSWER_INDEX = Index()
 
-STRING_INDEX.index(UNK)
-LAYOUT_INDEX.index(UNK)
+UNK_ID = QUESTION_INDEX.index(UNK)
+MODULE_INDEX.index(UNK)
 ANSWER_INDEX.index(UNK)
 
-STRING_INDEX.index(NULL)
-LAYOUT_INDEX.index(NULL)
-ANSWER_INDEX.index(NULL)
+NULL_ID = QUESTION_INDEX.index(NULL)
+#MODULE_INDEX.index(NULL)
+#ANSWER_INDEX.index(NULL)

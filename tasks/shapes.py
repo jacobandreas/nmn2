@@ -1,21 +1,22 @@
 #!/usr/bin/env python2
 
-from datum import Datum, Layout
-from indices import STRING_INDEX, LAYOUT_INDEX, ANSWER_INDEX, UNK
-from parse import parse_tree
-from models.modules import *
+from misc.datum import Datum, Layout
+from misc.indices import QUESTION_INDEX, LAYOUT_INDEX, ANSWER_INDEX, UNK
+from misc.parse import parse_tree
+#from models.modules import *
 
 from collections import defaultdict
 import logging
 import numpy as np
 import os
 
-STRING_FILE = "data/shapes/%s.txt"
+QUESTION_FILE = "data/shapes/%s.txt"
 PARSE_FILE = "data/shapes/%s.query"
 ANN_FILE = "data/shapes/%s.output"
 IMAGE_FILE = "data/shapes/%s.input.npy"
 
 def parse_to_layout(parse):
+    return Layout((), ())
     return Layout(*parse_to_layout_helper(parse))
 
 def parse_to_layout_helper(parse):
@@ -72,7 +73,7 @@ class ShapesTaskSet:
 
         images = np.load(IMAGE_FILE % set_name)
 
-        with open(STRING_FILE % set_name) as question_f, \
+        with open(QUESTION_FILE % set_name) as question_f, \
              open(PARSE_FILE % set_name) as parse_f, \
              open(ANN_FILE % set_name) as ann_f:
 
@@ -81,7 +82,7 @@ class ShapesTaskSet:
         
                 question = question.strip().split()
                 question = ["<s>"] + question + ["</s>"]
-                question = [STRING_INDEX.index(w) for w in question]
+                question = [QUESTION_INDEX.index(w) for w in question]
                 parse = parse_tree(parse_str.strip())
                 layout = parse_to_layout(parse)
 
@@ -103,7 +104,7 @@ class ShapesTaskSet:
 
         logging.info("%s:", set_name.upper())
         logging.info("%s items", len(self.data))
-        logging.info("%s words", len(STRING_INDEX))
+        logging.info("%s words", len(QUESTION_INDEX))
         logging.info("%s functions", len(LAYOUT_INDEX))
         logging.info("%s answers", len(ANSWER_INDEX))
         logging.info("%s layouts", len(self.by_layout_type.keys()))

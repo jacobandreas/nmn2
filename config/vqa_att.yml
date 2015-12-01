@@ -1,12 +1,11 @@
 task:
   name: vqa
-  #debug: 1024
+  #debug: 1000
 
 model:
-  name: nmn
+  name: att
   lstm_hidden: 500
   att_hidden: 100
-  #pred_hidden: 100
 
 opt:
   batch_size: 100

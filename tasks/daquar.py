@@ -1,17 +1,17 @@
 #!/usr/bin/env python2
 
-from datum import Datum, Layout
-from indices import STRING_INDEX, LAYOUT_INDEX, ANSWER_INDEX
-from parse import parse_tree
-from models.modules import \
-        AttAnswerModule, DetectModule, DenseAnswerModule, ConjModule, \
-        RedetectModule
+from misc.datum import Datum, Layout
+from misc.indices import QUESTION_INDEX, LAYOUT_INDEX, ANSWER_INDEX
+from misc.parse import parse_tree
+#from models.modules import \
+#        AttAnswerModule, DetectModule, DenseAnswerModule, ConjModule, \
+#        RedetectModule
 
 from collections import defaultdict
 import logging
 import numpy as np
 
-STRING_FILE = "data/daquar/%s/%s.questions.txt"
+QUESTION_FILE = "data/daquar/%s/%s.questions.txt"
 PARSE_FILE = "data/daquar/%s/%s.questions.sp"
 ANN_FILE = "data/daquar/%s/%s.answers.txt"
 IMAGE_FILE = "data/daquar/images/conv/%s.png.npz"
@@ -21,6 +21,7 @@ TRAIN_IMAGES_FILE = "data/daquar/train.txt"
 VAL_IMAGES_FILE = "data/daquar/val.txt"
 
 def parse_to_layout(parse):
+    return Layotu((), ())
     return Layout(*parse_to_layout_helper(parse, internal=False))
 
 def parse_to_layout_helper(parse, internal):
@@ -77,7 +78,7 @@ class DaquarTaskSet:
         data_by_string_length = defaultdict(list)
         data_by_layout_and_length = defaultdict(list)
 
-        with open(STRING_FILE % (size, set_name)) as question_f, \
+        with open(QUESTION_FILE % (size, set_name)) as question_f, \
              open(PARSE_FILE % (size, set_name)) as parse_f, \
              open(ANN_FILE % (size, set_name)) as ann_f:
 
@@ -106,7 +107,7 @@ class DaquarTaskSet:
 
                 answer = ANSWER_INDEX.index(answer)
 
-                indexed_words = [STRING_INDEX.index(w) for w in words]
+                indexed_words = [QUESTION_INDEX.index(w) for w in words]
 
                 parse = parse_tree(parse_str)
                 #if parse[0] != "color":
@@ -126,7 +127,7 @@ class DaquarTaskSet:
 
         logging.info("%s:", set_name.upper())
         logging.info("%s items", len(self.data))
-        logging.info("%s words", len(STRING_INDEX))
+        logging.info("%s words", len(QUESTION_INDEX))
         logging.info("%s functions", len(LAYOUT_INDEX))
         logging.info("%s answers", len(ANSWER_INDEX))
         logging.info("%s layouts", len(self.by_layout_type.keys()))
