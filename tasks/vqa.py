@@ -41,11 +41,11 @@ def prepare_indices():
     for word, count in word_counts.items():
         if count >= MIN_COUNT:
             QUESTION_INDEX.index(word)
-    
+
     pred_counts = defaultdict(lambda: 0)
     with open(PARSE_FILE % set_name) as parse_f:
         for line in parse_f:
-            parts = line.strip().replace("(", "").replace(")", "").split()
+            parts = line.strip().replace("(", "").replace(")", "").replace(";", " ").split()
             for part in parts:
                 pred_counts[part] += 1
     for pred, count in pred_counts.items():
@@ -53,7 +53,7 @@ def prepare_indices():
             MODULE_INDEX.index(pred)
 
     answer_counts = defaultdict(lambda: 0)
-    with open(ANN_FILE % set_name) as ann_f: 
+    with open(ANN_FILE % set_name) as ann_f:
         annotations = json.load(ann_f)["annotations"]
         for ann in annotations:
             for answer in ann["answers"]:
@@ -97,10 +97,11 @@ def parse_to_layout(parse, modules):
     layout_modules = [None, None]
     layout_indices = [None, None]
 
-    if parse[0] in ("is1", "is2"):
-        layout_modules[0] = modules["measure"]
-    else:
-        layout_modules[0] = modules["classify"]
+    #if parse[0] in ("is1", "is2"):
+    #    layout_modules[0] = modules["measure"]
+    #else:
+    #    layout_modules[0] = modules["classify"]
+    layout_modules[0] = modules["classify"]
     layout_indices[0] = MODULE_INDEX[parse[0]] or UNK_ID
 
     layout_modules[1] = modules["attend"]
@@ -110,11 +111,11 @@ def parse_to_layout(parse, modules):
     return layout
 
 class VqaDatum(Datum):
-    def __init__(self, id, question, layout, input_set, input_id, answers, mean, std):
+    def __init__(self, id, question, layouts, input_set, input_id, answers, mean, std):
         Datum.__init__(self)
         self.id = id
         self.question = question
-        self.layout = layout
+        self.layouts = layouts
         self.input_set = input_set
         self.input_id = input_id
         self.answers = answers
@@ -174,47 +175,46 @@ class VqaTaskSet:
             self.load_set(config, set_name, size, modules, mean, std)
 
         for datum in self.by_id.values():
-            self.by_layout_type[datum.layout.modules].append(datum)
+            self.by_layout_type[datum.layouts[0].modules].append(datum)
+            datum.layout = datum.layouts[0]
 
         self.layout_types = self.by_layout_type.keys()
+        self.data = self.by_id.values()
 
         logging.info("%s:", ", ".join(set_names).upper())
         logging.info("%s items", len(self.by_id))
         logging.info("%d answers", len(ANSWER_INDEX))
         logging.info("%d predicates", len(MODULE_INDEX))
         logging.info("%d words", len(QUESTION_INDEX))
-        logging.info("%d layouts", len(self.layout_types))
+        #logging.info("%d layouts", len(self.layout_types))
         logging.info("")
 
     def load_set(self, config, set_name, size, modules, mean, std):
         with open(QUESTION_FILE % set_name) as question_f, \
              open(PARSE_FILE % set_name) as parse_f:
             questions = json.load(question_f)["questions"]
-            parses = [l.strip() for l in parse_f]
-            assert len(questions) == len(parses)
-            pairs = zip(questions, parses)
+            parse_groups = [l.strip() for l in parse_f]
+            assert len(questions) == len(parse_groups)
+            pairs = zip(questions, parse_groups)
             if size is not None:
                 pairs = pairs[:size]
-            for question, parse_str in pairs:
+            for question, parse_group in pairs:
                 id = question["question_id"]
                 question_str = proc_question(question["question"])
                 indexed_question = \
                     [QUESTION_INDEX[w] or UNK_ID for w in question_str]
-                
-                parse = parse_tree(parse_str)
-                layout = parse_to_layout(parse, modules)
-                if layout is None:
-                    continue
+
+                parse_strs = parse_group.split(";")
+                parses = [parse_tree(p) for p in parse_strs]
+                layouts = [parse_to_layout(p, modules) for p in parses]
                 image_id = question["image_id"]
                 try:
                     image_set_name = "test2015" if set_name == "test-dev2015" else set_name
-                    datum = VqaDatum(id, indexed_question, layout, image_set_name, image_id, [], mean, std)
-                    datum.raw_query = parse_str
+                    datum = VqaDatum(id, indexed_question, layouts, image_set_name, image_id, [], mean, std)
                     self.by_id[id] = datum
                 except IOError as e:
                     print e
                     pass
-                    
 
         if set_name not in ("test2015", "test-dev2015"):
             with open(ANN_FILE % set_name) as ann_f:

@@ -18,6 +18,9 @@ class Module:
     def forward(self, index, label_data, bottoms, image, dropout, apollo_net):
         raise NotImplementedError()
 
+    def __str__(self):
+        return self.__class__.__name__
+
 class AttendModule(Module):
     def forward(self, index, label_data, bottoms, image, dropout, apollo_net):
         assert len(bottoms) == 0
@@ -299,11 +302,22 @@ class NmnModel:
 
         target = "PRED_target_%d" % self.loss_counter
         loss = "PRED_loss_%d" % self.loss_counter
+        softmax = "PRED_softmax_%d" % self.loss_counter
         self.loss_counter += 1
 
         net.f(NumpyData(target, answer_data))
-        return net.f(SoftmaxWithLoss(
+        loss = net.f(SoftmaxWithLoss(
             loss, bottoms=[self.prediction, target], ignore_label=UNK_ID))
+
+        net.f(Softmax(softmax, bottoms=[self.prediction]))
+
+        pred_probs = net.blobs[softmax].data
+        batch_size = pred_probs.shape[0]
+        pred_ans_probs = pred_probs[np.arange(batch_size), answer_data.astype(np.int)]
+        pred_ans_log_probs = np.log(pred_ans_probs)
+        pred_ans_log_probs[answer_data == UNK_ID] = 0
+
+        return loss, -pred_ans_log_probs
 
     def train(self):
         self.apollo_net.backward()

@@ -55,22 +55,25 @@ def parse_to_layout_helper(parse, modules, internal):
         else:
             mod_head = modules["classify"]
 
-        below = [parse_to_layout_helper(child, modules, internal=True) 
+        below = [parse_to_layout_helper(child, modules, internal=True)
                  for child in parse[1:]]
         mods_below, indices_below = zip(*below)
         return (mod_head,) + tuple(mods_below), \
                 (head_idx,) + tuple(indices_below)
 
 class CocoQADatum(Datum):
-    def __init__(self, question, layout, image_id, answer, coco_set_name, mean, 
+    def __init__(self, question, layouts, image_id, answer, coco_set_name, mean,
             std):
         self.question = question
-        self.layout = layout
+        self.layouts = layouts
+        self.layout = layouts[0]
         self.image_id = image_id
         self.answers = [answer]
 
+        self.id = image_id
+
         self.input_path = IMAGE_FILE % (coco_set_name, coco_set_name, image_id)
-        self.image_path = RAW_IMAGE_FILE % (coco_set_name, coco_set_name, 
+        self.image_path = RAW_IMAGE_FILE % (coco_set_name, coco_set_name,
                                             image_id)
 
         if not os.path.exists(self.input_path):
@@ -110,14 +113,14 @@ class CocoQATaskSet:
 
         data = set()
         data_by_layout_type = defaultdict(list)
-        data_by_question_length = defaultdict(list)
-        data_by_layout_and_length = defaultdict(list)
+        #data_by_question_length = defaultdict(list)
+        #data_by_layout_and_length = defaultdict(list)
 
         if set_name == "val":
             self.data = data
             self.by_layout_type = data_by_layout_type
-            self.by_question_length = data_by_question_length
-            self.by_layout_and_length = data_by_layout_and_length
+            #self.by_question_length = data_by_question_length
+            #self.by_layout_and_length = data_by_layout_and_length
             self.batch_keys = set()
             self.batches = {}
             return
@@ -159,7 +162,7 @@ class CocoQATaskSet:
             i = 0
             for question, parse_str, answer, image_id in \
                     zip(question_f, parse_f, ann_f, image_id_f):
-            
+
                 question = question.strip().lower()
                 parse_str = parse_str.strip().replace("'", "")
                 answer = answer.strip()
@@ -189,25 +192,25 @@ class CocoQATaskSet:
                 coco_set_name = "train" if set_name == "train" else "val"
                 try:
                     datum = CocoQADatum(
-                            words, layout, image_id, answer, coco_set_name, 
+                            words, [layout], image_id, answer, coco_set_name,
                             mean, std)
                     datum.raw_query = parse_str
                     data.add(datum)
                     data_by_layout_type[datum.layout.modules].append(datum)
-                    data_by_question_length[len(datum.question)].append(datum)
-                    data_by_layout_and_length[(datum.layout.modules, len(datum.question))].append(datum)
+                    #data_by_question_length[len(datum.question)].append(datum)
+                    #data_by_layout_and_length[(datum.layout.modules, len(datum.question))].append(datum)
                 except IOError as e:
                     pass
 
         self.data = data
         self.by_layout_type = data_by_layout_type
-        self.by_question_length = data_by_question_length
-        self.by_layout_and_length = data_by_layout_and_length
+        #self.by_question_length = data_by_question_length
+        #self.by_layout_and_length = data_by_layout_and_length
 
         logging.info("%s:", set_name.upper())
         logging.info("%s items", len(self.data))
         logging.info("%s words", len(QUESTION_INDEX))
         logging.info("%s functions", len(MODULE_INDEX))
         logging.info("%s answers", len(ANSWER_INDEX))
-        logging.info("%s layouts", len(self.by_layout_type.keys()))
+        #logging.info("%s layouts", len(self.by_layout_type.keys()))
         logging.info("")

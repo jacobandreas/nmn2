@@ -16,4 +16,6 @@ def extract_parse(p):
         return str(p)
     elif isinstance(p, bool):
         return str(p).lower()
+    elif isinstance(p, float):
+        return str(p).lower()
     return tuple(extract_parse(q) for q in p)

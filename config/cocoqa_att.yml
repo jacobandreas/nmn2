@@ -1,6 +1,6 @@
 task:
   name: cocoqa
-  #debug: 1024
+  debug: 1024
 
 model:
   name: att

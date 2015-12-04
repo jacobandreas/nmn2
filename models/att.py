@@ -223,6 +223,8 @@ class AttModel:
 
         self.loss_counter += 1
 
-        return net.f(SoftmaxWithLoss(
+        loss = net.f(SoftmaxWithLoss(
                 loss_score, bottoms=[self.pred_layer, loss_data],
                 ignore_label=UNK_ID))
+
+        return loss, np.zeros((answers.size,))

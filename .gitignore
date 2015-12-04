@@ -1,6 +1,7 @@
 *.pyc
 *.swp
 *.lprof
+*.log
 logs
 vis
 data
