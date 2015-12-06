@@ -101,78 +101,31 @@ def do_iter(task_set, model, config, train=False, vis=False):
     return loss, acc, predictions
 
 def do_batch(data, model, config, train, vis):
-    layouts = forward_layout(data, model, config, train, vis)
-    predictions = forward_answer(data, layouts, model, config, train, vis)
-
-    answer_loss, answer_datum_losses = backward_answer(
-            data, model, config, train, vis)
-    #layout_loss = backward_layout(
-    #        data, answer_datum_losses, model, config, train, vis)
-
+    predictions = forward(data, model, config, train, vis)
+    answer_loss = backward(data, model, config, train, vis)
     acc = compute_acc(predictions, data)
 
     return answer_loss, acc, predictions
 
-def forward_layout(data, model, config, train, vis):
-
-    return [d.layouts[0] for d in data]
-
-    # TODO move
-    if not hasattr(model, "layout_params"):
-        model.layout_params = np.zeros((len(MODULE_INDEX),))
-
-    layout_ids = [[l.labels[1] for l in d.layouts] for d in data]
-
-    layout_scores = [
-        np.asarray([model.layout_params[i] for i in ii])
-        for ii in layout_ids
-    ]
-
-    layout_probs = [np.exp(s) / np.sum(np.exp(s)) for s in layout_scores]
-
-    layout_choices = [np.random.choice(probs.size, p=probs) for probs in layout_probs]
-
-    model.layout_ids = layout_ids
-    model.layout_scores = layout_scores
-    model.layout_probs = layout_probs
-    model.layout_choices = layout_choices
-
-    layouts = [d.layouts[c] for d, c in zip(data, layout_choices)]
-
-    return layouts
-
-def backward_layout(data, datum_losses, model, config, train, vis):
-
-    return
-
-    layout_ids = model.layout_ids
-    layout_scores = model.layout_scores
-    layout_probs = model.layout_probs
-    layout_choices = model.layout_choices
-
-    for i in range(len(data)):
-        choice = layout_choices[i]
-        label = layout_ids[i][choice]
-        grad = 1 - layout_probs[i][choice]
-        model.layout_params[label] -= grad * datum_losses[i]
-
-def forward_answer(data, layouts, model, config, train, vis):
-    # TODO relax
-    assert len(set(l.modules for l in layouts)) == 1
-    c_modules = layouts[0].modules
-    c_labels = [l.labels for l in layouts]
+def forward(data, model, config, train, vis):
+    model.reset()
 
     # load batch data
     max_len = max(len(d.question) for d in data)
+    max_layouts = max(len(d.layouts) for d in data)
     channels, width, height = data[0].load_image().shape
     questions = np.ones((config.opt.batch_size, max_len)) * NULL_ID
     images = np.zeros((config.opt.batch_size, channels, width, height))
+    layout_reprs = np.zeros((config.opt.batch_size, max_layouts)) * NULL_ID
     for i, datum in enumerate(data):
         questions[i, max_len-len(datum.question):] = datum.question
         images[i, ...] = datum.load_image()
+        layout_reprs[i, max_layouts-len(datum.layouts):] = \
+                [l.labels[1] for l in datum.layouts]
+    layouts = [d.layouts for d in data]
 
     # apply model
-    model.forward(c_modules, c_labels, questions, images, dropout=train)
+    model.forward(layouts, layout_reprs, questions, images, dropout=train)
 
     # extract predictions
     predictions = list()
@@ -185,7 +138,7 @@ def forward_answer(data, layouts, model, config, train, vis):
 
     return predictions
 
-def backward_answer(data, model, config, train, vis):
+def backward(data, model, config, train, vis):
     n_answers = len(data[0].answers)
     loss = 0
     datum_losses = np.zeros((config.opt.batch_size,))
@@ -198,10 +151,11 @@ def backward_answer(data, model, config, train, vis):
         loss += loss_i
         datum_losses += datum_losses_i
 
-    if train:
-        model.train()
+    model.reinforce(datum_losses)
 
-    return loss, datum_losses
+    model.train()
+
+    return loss
 
 def compute_acc(predictions, data):
     score = 0.0
@@ -292,10 +246,6 @@ def do_old_iter(data, model, config, train=False, vis=False):
     if batches == 0:
         return 0, 0, dict()
     return loss / batches, acc / batches, predictions
-#
-#def compute_acc(pred, target):
-#    pred_ids = np.argmax(pred, axis=1)
-#    return np.mean(pred_ids == target)
 
 if __name__ == "__main__":
     main()

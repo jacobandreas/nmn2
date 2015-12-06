@@ -1,3 +1,4 @@
+from layers.reinforce import Index, AsLoss
 from misc.indices import QUESTION_INDEX, MODULE_INDEX, ANSWER_INDEX, UNK_ID
 from misc import util
 from opt import adadelta
@@ -185,21 +186,44 @@ class NmnModel:
             self.nmns[modules] = Nmn(modules, self.apollo_net)
         return self.nmns[modules]
 
-    def forward(self, layout_type, layout_label_data, question_data, image_data, 
-            dropout):
-        self.loss_counter = 0
-        self.apollo_net.clear_forward()
 
-        nmn = self.get_nmn(layout_type)
+    def forward(self, layouts, layout_data, question_data, image_data, dropout):
+
+        # predict layout
+
+        question_hidden = self.forward_question(question_data, dropout)
+        layout_ids, layout_probs = self.forward_layout(question_hidden, layout_data)
+        chosen_layouts = [ll[i] for ll, i in zip(layouts, layout_ids)]
+        assert len(set(l.modules for l in chosen_layouts)) == 1
+        modules = chosen_layouts[0].modules
+        layout_label_data = np.asarray([l.labels for l in chosen_layouts])
+
+        self.layout_ids = layout_ids
+        self.layout_probs = layout_probs
+
+        # predict answer
+
+        nmn = self.get_nmn(modules)
 
         image = self.forward_image(image_data, dropout)
-        question_hidden = self.forward_question(question_data, dropout)
         nmn_hidden = nmn.forward(layout_label_data, image, dropout)
         self.prediction = self.forward_pred(question_hidden, nmn_hidden)
-        
+
         self.prediction_data = self.apollo_net.blobs[self.prediction].data
         self.att_data = self.apollo_net.blobs["Attend_1_softmax"].data
         self.att_data = self.att_data.reshape((-1, 14, 14))
+
+    def forward_layout(self, question_hidden, layout_data):
+        net = self.apollo_net
+        batch_size, n_layouts = layout_data.shape
+
+        ip = "LAYOUT_ip"
+        softmax = "LAYOUT_softmax"
+
+        net.f(InnerProduct(ip, layout_data.shape[1], bottoms=[question_hidden]))
+        net.f(Softmax(softmax, bottoms=[ip]))
+
+        return [0 for i in range(batch_size)], softmax
 
     def forward_image(self, image_data, dropout):
 
@@ -255,7 +279,7 @@ class NmnModel:
 
             net.f(NumpyData(word, question_data[:,t]))
             net.f(Wordvec(
-                    wordvec, self.config.lstm_hidden, len(QUESTION_INDEX), 
+                    wordvec, self.config.lstm_hidden, len(QUESTION_INDEX),
                     bottoms=[word], param_names=[wordvec_param]))
             net.f(Concat(concat, bottoms=[prev_hidden, wordvec]))
             net.f(LstmUnit(
@@ -318,6 +342,28 @@ class NmnModel:
         pred_ans_log_probs[answer_data == UNK_ID] = 0
 
         return loss, -pred_ans_log_probs
+
+    def reinforce(self, losses):
+        net = self.apollo_net
+
+        choice_data = "REINFORCE_choice_data"
+        loss_data = "REINFORCE_loss_data"
+        index = "REINFORCE_index"
+        weight = "REINFORCE_weight"
+        reduction = "REINFORCE_reduction"
+        loss = "REINFORCE_loss"
+
+        net.f(NumpyData(choice_data, self.layout_ids))
+        net.f(NumpyData(loss_data, losses))
+        net.f(Index(index, {}, bottoms=[self.layout_probs, choice_data]))
+        net.f(Eltwise(weight, "PROD", bottoms=[index, loss_data]))
+        from layers.reinforce import Reduction
+        net.f(Reduction(reduction, 0, bottoms=[weight], loss_weight=1.0))
+
+    def reset(self):
+        self.apollo_net.clear_forward()
+        self.loss_counter = 0
+        self.question_hidden = None
 
     def train(self):
         self.apollo_net.backward()
