@@ -146,7 +146,7 @@ def backward(data, model, config, train, vis):
         output_i = UNK_ID * np.ones(config.opt.batch_size)
         output_i[:len(data)] = \
                 np.asarray([d.answers[i] for d in data])
-        loss += model.answer_loss(output_i)
+        loss += model.loss(output_i)
 
     model.train()
 

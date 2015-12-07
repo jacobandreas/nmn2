@@ -58,12 +58,12 @@ class AttendModule(Module):
                 label_vec, self.config.att_hidden, len(MODULE_INDEX),
                 bottoms=[label], param_names=[label_vec_param]))
         net.blobs[label_vec].reshape((batch_size, self.config.att_hidden, 1, 1))
-        #if dropout:
-        #    net.f(Dropout(label_vec_dropout, 0.5, bottoms=[label_vec]))
-        #    label_vec_final = label_vec_dropout
-        #else:
-        #    label_vec_final = label_vec
-        label_vec_final = label_vec
+        if dropout:
+            net.f(Dropout(label_vec_dropout, 0.5, bottoms=[label_vec]))
+            label_vec_final = label_vec_dropout
+        else:
+            label_vec_final = label_vec
+        #label_vec_final = label_vec
         net.f(Tile(tile, axis=2, tiles=image_size, bottoms=[label_vec_final]))
         net.f(Eltwise(sum, "SUM", bottoms=[proj_image, tile]))
         net.f(ReLU(relu, bottoms=[sum]))
@@ -192,11 +192,13 @@ class NmnModel:
         # predict layout
 
         question_hidden = self.forward_question(question_data, dropout)
-        layout_ids, layout_probs = self.forward_layout(question_hidden, layout_data)
+        layout_ids, layout_probs = \
+                self.forward_layout(question_hidden, layouts, layout_data)
         chosen_layouts = [ll[i] for ll, i in zip(layouts, layout_ids)]
         assert len(set(l.modules for l in chosen_layouts)) == 1
         modules = chosen_layouts[0].modules
-        layout_label_data = np.asarray([l.labels for l in chosen_layouts])
+        layout_label_data = [l.labels for l in chosen_layouts] + \
+                [chosen_layouts[0].labels for i in range(self.opt_config.batch_size - len(layouts))]
 
         self.layout_ids = layout_ids
         self.layout_probs = layout_probs
@@ -213,37 +215,56 @@ class NmnModel:
         self.att_data = self.apollo_net.blobs["Attend_1_softmax"].data
         self.att_data = self.att_data.reshape((-1, 14, 14))
 
-    def forward_layout(self, question_hidden, layout_data):
+    def forward_layout(self, question_hidden, layouts, layout_data):
         net = self.apollo_net
         batch_size, n_layouts = layout_data.shape
 
         proj_question = "LAYOUT_proj_question"
-        layout_word = "LAYOUT_word"
-        layout_wordvec = "LAYOUT_wordvec"
+        tile_question = "LAYOUT_tile%d_question" % n_layouts
+        layout_word = "LAYOUT_word_%d"
+        layout_wordvec = "LAYOUT_wordvec_%d"
+        concat = "LAYOUT_concat"
         sum = "LAYOUT_sum"
         relu = "LAYOUT_relu"
         pred = "LAYOUT_pred"
         softmax = "LAYOUT_softmax"
 
         net.f(InnerProduct(
-            proj_question, self.config.layout_hidden,
-            bottoms=[question_hidden]))
-        net.f(NumpyData(layout_word, layout_data))
-        net.f(Wordvec(
-            layout_wordvec, self.config.layout_hidden, len(MODULE_INDEX),
-            bottoms=[layout_word]))
-        net.f(Eltwise(sum, "SUM", bottoms=[proj_question, layout_wordvec]))
+                proj_question, self.config.layout_hidden,
+                bottoms=[question_hidden]))
+        net.blobs[proj_question].reshape(
+                (batch_size, 1, self.config.layout_hidden))
+        net.f(Tile(tile_question, axis=1, tiles=n_layouts,
+                bottoms=[proj_question]))
+
+        concat_bottoms = []
+        for i in range(n_layouts):
+            net.f(NumpyData(layout_word % i, layout_data[:,i]))
+            net.f(Wordvec(
+                    layout_wordvec % i, self.config.layout_hidden,
+                    len(MODULE_INDEX), bottoms=[layout_word % i]))
+            net.blobs[layout_wordvec % i].reshape(
+                    (batch_size, 1, self.config.layout_hidden))
+            concat_bottoms.append(layout_wordvec % i)
+
+        net.f(Concat(concat, axis=1, bottoms=concat_bottoms))
+        net.f(Eltwise(sum, "SUM", bottoms=[tile_question, concat]))
         net.f(ReLU(relu, bottoms=[sum]))
-        net.f(InnerProduct(pred, n_layouts, bottoms=[relu]))
+        net.f(InnerProduct(pred, 1, axis=2, bottoms=[relu]))
+        net.blobs[pred].reshape((batch_size, n_layouts))
         net.f(Softmax(softmax, bottoms=[pred]))
 
         probs = net.blobs[softmax].data
 
         layout_choices = []
-        for i in range(batch_size):
-            choice = np.random.choice(n_layouts, p=probs[i,:])
+        for i in range(len(layouts)):
+            pr_here = probs[i,:len(layouts[i])].astype(np.float)
+            pr_here /= np.sum(pr_here)
+            choice = np.random.choice(pr_here.size, p=pr_here)
             layout_choices.append(choice)
             # TODO check to ensure choice is in bounds for this datum
+        for i in range(batch_size - len(layouts)):
+            layout_choices.append(0)
 
         return layout_choices, softmax
 

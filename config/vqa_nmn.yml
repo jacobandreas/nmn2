@@ -1,6 +1,6 @@
 task:
   name: vqa
-  #debug: 1000
+  #debug: 1010
 
 model:
   name: nmn
