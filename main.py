@@ -141,17 +141,12 @@ def forward(data, model, config, train, vis):
 def backward(data, model, config, train, vis):
     n_answers = len(data[0].answers)
     loss = 0
-    datum_losses = np.zeros((config.opt.batch_size,))
 
     for i in range(n_answers):
         output_i = UNK_ID * np.ones(config.opt.batch_size)
         output_i[:len(data)] = \
                 np.asarray([d.answers[i] for d in data])
-        loss_i, datum_losses_i = model.loss(output_i)
-        loss += loss_i
-        datum_losses += datum_losses_i
-
-    model.reinforce(datum_losses)
+        loss += model.answer_loss(output_i)
 
     model.train()
 

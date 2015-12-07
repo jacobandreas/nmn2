@@ -217,13 +217,35 @@ class NmnModel:
         net = self.apollo_net
         batch_size, n_layouts = layout_data.shape
 
-        ip = "LAYOUT_ip"
+        proj_question = "LAYOUT_proj_question"
+        layout_word = "LAYOUT_word"
+        layout_wordvec = "LAYOUT_wordvec"
+        sum = "LAYOUT_sum"
+        relu = "LAYOUT_relu"
+        pred = "LAYOUT_pred"
         softmax = "LAYOUT_softmax"
 
-        net.f(InnerProduct(ip, layout_data.shape[1], bottoms=[question_hidden]))
-        net.f(Softmax(softmax, bottoms=[ip]))
+        net.f(InnerProduct(
+            proj_question, self.config.layout_hidden,
+            bottoms=[question_hidden]))
+        net.f(NumpyData(layout_word, layout_data))
+        net.f(Wordvec(
+            layout_wordvec, self.config.layout_hidden, len(MODULE_INDEX),
+            bottoms=[layout_word]))
+        net.f(Eltwise(sum, "SUM", bottoms=[proj_question, layout_wordvec]))
+        net.f(ReLU(relu, bottoms=[sum]))
+        net.f(InnerProduct(pred, n_layouts, bottoms=[relu]))
+        net.f(Softmax(softmax, bottoms=[pred]))
 
-        return [0 for i in range(batch_size)], softmax
+        probs = net.blobs[softmax].data
+
+        layout_choices = []
+        for i in range(batch_size):
+            choice = np.random.choice(n_layouts, p=probs[i,:])
+            layout_choices.append(choice)
+            # TODO check to ensure choice is in bounds for this datum
+
+        return layout_choices, softmax
 
     def forward_image(self, image_data, dropout):
 
@@ -341,9 +363,11 @@ class NmnModel:
         pred_ans_log_probs = np.log(pred_ans_probs)
         pred_ans_log_probs[answer_data == UNK_ID] = 0
 
-        return loss, -pred_ans_log_probs
+        self.cumulative_datum_losses -= pred_ans_log_probs
 
-    def reinforce(self, losses):
+        return loss
+
+    def reinforce_layout(self, losses):
         net = self.apollo_net
 
         choice_data = "REINFORCE_choice_data"
@@ -363,8 +387,10 @@ class NmnModel:
     def reset(self):
         self.apollo_net.clear_forward()
         self.loss_counter = 0
+        self.cumulative_datum_losses = np.zeros((self.opt_config.batch_size,))
         self.question_hidden = None
 
     def train(self):
+        self.reinforce_layout(self.cumulative_datum_losses)
         self.apollo_net.backward()
         adadelta.update(self.apollo_net, self.opt_state, self.opt_config)
