@@ -247,8 +247,13 @@ class NmnModel:
                     (batch_size, 1, self.config.layout_hidden))
             concat_bottoms.append(layout_wordvec % i)
 
-        net.f(Concat(concat, axis=1, bottoms=concat_bottoms))
-        net.f(Eltwise(sum, "SUM", bottoms=[tile_question, concat]))
+        if n_layouts > 1:
+            net.f(Concat(concat, axis=1, bottoms=concat_bottoms))
+            concat_layer = concat
+        else:
+            concat_layer = concat_bottoms[0]
+
+        net.f(Eltwise(sum, "SUM", bottoms=[tile_question, concat_layer]))
         net.f(ReLU(relu, bottoms=[sum]))
         net.f(InnerProduct(pred, 1, axis=2, bottoms=[relu]))
         net.blobs[pred].reshape((batch_size, n_layouts))

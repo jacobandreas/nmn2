@@ -81,6 +81,9 @@ def do_iter(task_set, model, config, train=False, vis=False):
     data = list(task_set.data)
     np.random.shuffle(data)
 
+    if vis:
+        visualizer.begin(config.name, 100)
+
     for batch_start in range(0, len(data), config.opt.batch_size):
         batch_end = batch_start + config.opt.batch_size
         batch_data = data[batch_start:batch_end]
@@ -92,6 +95,23 @@ def do_iter(task_set, model, config, train=False, vis=False):
         acc += batch_acc
         predictions += batch_preds
         n_batches += 1
+
+        if vis:
+            datum = batch_data[0]
+            preds = model.prediction_data[0,:]
+            top = np.argsort(preds)[-5:]
+            top_answers = reversed([ANSWER_INDEX.get(p) for p in top])
+            fields = [
+                    " ".join([QUESTION_INDEX.get(w) for w in datum.question[1:-1]]),
+                "<img src='../../%s'>" % datum.image_path,
+                model.att_data[0,...],
+                ", ".join(top_answers),
+                ", ".join([ANSWER_INDEX.get(a) for a in datum.answers])
+            ]
+            visualizer.show(fields)
+
+    if vis:
+        visualizer.end()
 
     if n_batches == 0:
         return 0, 0, dict()

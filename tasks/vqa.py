@@ -97,6 +97,7 @@ def parse_to_layout(parse, modules):
     layout_modules = [None, None]
     layout_indices = [None, None]
 
+    #print parse[0]
     #if parse[0] in ("is1", "is2"):
     #    layout_modules[0] = modules["measure"]
     #else:
