@@ -22,6 +22,9 @@ def build_model(config, opt_config):
     if config.name == "att":
         from att import AttModel
         return AttModel(config, opt_config)
+    if config.name == "sp":
+        from sp import StoredProgramModel
+        return StoredProgramModel(config, opt_config)
     else:
         raise NotImplementedError(
                 "Don't know how to build a %s model" % config.name)

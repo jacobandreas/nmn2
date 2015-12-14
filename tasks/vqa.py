@@ -3,7 +3,8 @@
 from misc.datum import Datum, Layout
 from misc.indices import QUESTION_INDEX, MODULE_INDEX, ANSWER_INDEX, UNK_ID
 from misc.parse import parse_tree
-from models.nmn import AttendModule, ClassifyModule, MeasureModule
+from models.nmn import AttendModule, ClassifyModule, MeasureModule, \
+        CombineModule
 
 from collections import defaultdict
 import json
@@ -13,7 +14,8 @@ import os
 import re
 
 QUESTION_FILE = "data/vqa/Questions/OpenEnded_mscoco_%s_questions.json"
-PARSE_FILE = "data/vqa/Questions/%s.sp"
+SINGLE_PARSE_FILE = "data/vqa/Questions/%s.sp"
+MULTI_PARSE_FILE = "data/vqa/Questions/%s.sps"
 ANN_FILE = "data/vqa/Annotations/mscoco_%s_annotations.json"
 IMAGE_FILE = "data/vqa/Images/%s/conv/COCO_%s_%012d.jpg.npz"
 RAW_IMAGE_FILE = "data/vqa/Images/%s/raw/COCO_%s_%012d.jpg"
@@ -43,7 +45,7 @@ def prepare_indices():
             QUESTION_INDEX.index(word)
 
     pred_counts = defaultdict(lambda: 0)
-    with open(PARSE_FILE % set_name) as parse_f:
+    with open(MULTI_PARSE_FILE % set_name) as parse_f:
         for line in parse_f:
             parts = line.strip().replace("(", "").replace(")", "").replace(";", " ").split()
             for part in parts:
@@ -93,23 +95,44 @@ def compute_normalizers(config):
 
     return mean, std
 
-def parse_to_layout(parse, modules):
-    layout_modules = [None, None]
-    layout_indices = [None, None]
+def parse_to_layout_helper(parse, config, modules):
+    if isinstance(parse, str):
+        return modules["attend"], MODULE_INDEX[parse] or UNK_ID
+    head = parse[0]
+    below = [parse_to_layout_helper(c, config, modules) for c in parse[1:]]
+    modules_below, labels_below = zip(*below)
+    modules_below = tuple(modules_below)
+    labels_below = tuple(labels_below)
+    if head == "and":
+        module_head = modules["combine"]
+    elif config.measure and head == "is":
+        module_head = modules["measure"]
+    else:
+        module_head = modules["classify"]
+    label_head = MODULE_INDEX[head] or UNK_ID
+    modules_here = (module_head,) + modules_below
+    labels_here = (label_head,) + labels_below
+    return modules_here, labels_here
 
-    #print parse[0]
-    #if parse[0] in ("is1", "is2"):
+def parse_to_layout(parse, config, modules):
+    modules, indices = parse_to_layout_helper(parse, config, modules)
+    return Layout(modules, indices)
+
+    #layout_modules = [None, None]
+    #layout_indices = [None, None]
+
+    ##if config.measure and parse[0] in ("is1", "is2"):
+    #if config.measure and parse[0] == "is":
     #    layout_modules[0] = modules["measure"]
     #else:
     #    layout_modules[0] = modules["classify"]
-    layout_modules[0] = modules["classify"]
-    layout_indices[0] = MODULE_INDEX[parse[0]] or UNK_ID
+    #layout_indices[0] = MODULE_INDEX[parse[0]] or UNK_ID
 
-    layout_modules[1] = modules["attend"]
-    layout_indices[1] = MODULE_INDEX[parse[1]] or UNK_ID
+    #layout_modules[1] = modules["attend"]
+    #layout_indices[1] = MODULE_INDEX[parse[1]] or UNK_ID
 
-    layout = Layout(tuple(layout_modules), tuple(layout_indices))
-    return layout
+    #layout = Layout(tuple(layout_modules), tuple(layout_indices))
+    #return layout
 
 class VqaDatum(Datum):
     def __init__(self, id, question, layouts, input_set, input_id, answers, mean, std):
@@ -150,7 +173,8 @@ class VqaTask:
         modules = {
             "attend": AttendModule(config.model),
             "classify": ClassifyModule(config.model),
-            "measure": MeasureModule(config.model)
+            "measure": MeasureModule(config.model),
+            "combine": CombineModule(config.model)
         }
 
         mean, std = compute_normalizers(config.task)
@@ -191,8 +215,9 @@ class VqaTaskSet:
         logging.info("")
 
     def load_set(self, config, set_name, size, modules, mean, std):
+        parse_file = MULTI_PARSE_FILE if config.multi else SINGLE_PARSE_FILE
         with open(QUESTION_FILE % set_name) as question_f, \
-             open(PARSE_FILE % set_name) as parse_f:
+             open(parse_file % set_name) as parse_f:
             questions = json.load(question_f)["questions"]
             parse_groups = [l.strip() for l in parse_f]
             assert len(questions) == len(parse_groups)
@@ -207,10 +232,12 @@ class VqaTaskSet:
 
                 parse_strs = parse_group.split(";")
                 parses = [parse_tree(p) for p in parse_strs]
-                layouts = [parse_to_layout(p, modules) for p in parses]
+                parses = [("_what", "_thing") if p == "none" else p for p in parses]
+                layouts = [parse_to_layout(p, config, modules) for p in parses]
                 image_id = question["image_id"]
                 try:
                     image_set_name = "test2015" if set_name == "test-dev2015" else set_name
+                    layouts = layouts[:2]
                     datum = VqaDatum(id, indexed_question, layouts, image_set_name, image_id, [], mean, std)
                     self.by_id[id] = datum
                 except IOError as e:

@@ -78,7 +78,8 @@ def do_iter(task_set, model, config, train=False, vis=False):
     predictions = []
     n_batches = 0
 
-    data = list(task_set.data)
+    # sort first to guarantee deterministic behavior with fixed seed
+    data = list(sorted(task_set.data))
     np.random.shuffle(data)
 
     if vis:
@@ -136,13 +137,19 @@ def forward(data, model, config, train, vis):
     channels, width, height = data[0].load_image().shape
     questions = np.ones((config.opt.batch_size, max_len)) * NULL_ID
     images = np.zeros((config.opt.batch_size, channels, width, height))
-    layout_reprs = np.zeros((config.opt.batch_size, max_layouts)) * NULL_ID
+    layout_reprs = np.zeros((config.opt.batch_size, max_layouts, len(MODULE_INDEX)))
     for i, datum in enumerate(data):
         questions[i, max_len-len(datum.question):] = datum.question
         images[i, ...] = datum.load_image()
-        layout_reprs[i, max_layouts-len(datum.layouts):] = \
-                [l.labels[1] for l in datum.layouts]
+        for i_layout in range(len(datum.layouts)):
+            feats = util.flatten(datum.layouts[i_layout].labels)
+            layout_reprs[i,i_layout,feats] = 1
     layouts = [d.layouts for d in data]
+
+    #layout_reprs = np.ones((config.opt.batch_size, max_layouts)) * NULL_ID
+    #for i, datum in enumerate(data):
+    #    layout_reprs[i, max_layouts-len(datum.layouts):] = \
+    #            [l.labels[1] for l in datum.layouts]
 
     # apply model
     model.forward(layouts, layout_reprs, questions, images, dropout=train)

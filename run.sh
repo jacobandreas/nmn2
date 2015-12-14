@@ -6,6 +6,8 @@ export PYTHONPATH=$PYTHONPATH:$APOLLO_ROOT/python:$APOLLO_ROOT/python/caffe/prot
 
 #python main.py -c config/vqa_att.yml
 python main.py -c config/vqa_nmn.yml
-#kernprof -l main.py -c config/cocoqa_nmn.yml
+#python main.py -c config/shapes_nmn.yml
 
-# TODO bring back dropout from image features!
+#python test.py
+
+#kernprof -l main.py -c config/vqa_nmn.yml

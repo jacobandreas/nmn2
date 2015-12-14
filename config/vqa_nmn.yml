@@ -1,6 +1,8 @@
 task:
   name: vqa
   #debug: 1013
+  multi: true
+  measure: false
 
 model:
   name: nmn

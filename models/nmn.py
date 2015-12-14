@@ -23,7 +23,7 @@ class Module:
         return self.__class__.__name__
 
 class AttendModule(Module):
-    def forward(self, index, label_data, bottoms, image, dropout, apollo_net):
+    def forward(self, index, label_data, bottoms, image, dropout, apollo_net, qh=None):
         assert len(bottoms) == 0
 
         net = apollo_net
@@ -53,6 +53,7 @@ class AttendModule(Module):
         net.f(Convolution(
                 proj_image, (1, 1), self.config.att_hidden, bottoms=[image],
                 param_names=[proj_image_param_weight, proj_image_param_bias]))
+
         net.f(NumpyData(label, label_data))
         net.f(Wordvec(
                 label_vec, self.config.att_hidden, len(MODULE_INDEX),
@@ -63,7 +64,11 @@ class AttendModule(Module):
             label_vec_final = label_vec_dropout
         else:
             label_vec_final = label_vec
+
+        #net.f(Power(label_vec, bottoms=[qh]))
+        #net.blobs[label_vec].reshape((batch_size, self.config.att_hidden, 1, 1))
         #label_vec_final = label_vec
+
         net.f(Tile(tile, axis=2, tiles=image_size, bottoms=[label_vec_final]))
         net.f(Eltwise(sum, "SUM", bottoms=[proj_image, tile]))
         net.f(ReLU(relu, bottoms=[sum]))
@@ -80,11 +85,25 @@ class AttendModule(Module):
 #class ReAttendModule(Module):
 #    pass
 #
-#class CombineModule(Module):
-#    pass
+
+class CombineModule(Module):
+    def forward(self, index, label_data, bottoms, image, dropout, apollo_net, qh=None):
+        net = apollo_net
+        assert len(bottoms) >= 2
+        assert all(net.blobs[l].shape[1] == 1 for l in bottoms)
+
+        concat = "Combine_%d_concat" % index
+        conv = "Combine_%d_conv" % index
+        relu = "Combine_%d_relu" % index
+
+        net.f(Concat(concat, axis=1, bottoms=bottoms))
+        net.f(Convolution(conv, (1, 1), 1, bottoms=[concat]))
+        net.f(ReLU(relu, bottoms=[conv]))
+
+        return relu
 
 class ClassifyModule(Module):
-    def forward(self, index, label_data, bottoms, image, dropout, apollo_net):
+    def forward(self, index, label_data, bottoms, image, dropout, apollo_net, qh=None):
         assert len(bottoms) == 1
         mask = bottoms[0]
 
@@ -120,13 +139,13 @@ class ClassifyModule(Module):
 
 
 class MeasureModule(Module):
-    def forward(self, index, label_data, bottoms, image, dropout, apollo_net):
+    def forward(self, index, label_data, bottoms, image, dropout, apollo_net, qh=None):
         assert len(bottoms) == 1
         mask = bottoms[0]
 
         net = apollo_net
 
-        ip = "Measure_%d_ip"
+        ip = "Measure_%d_ip" % index
         ip_param_weight = "Measure_ip_param_weight"
         ip_param_bias = "Measure_ip_param_bias"
 
@@ -138,7 +157,8 @@ class MeasureModule(Module):
 
 
 class Nmn:
-    def __init__(self, modules, apollo_net):
+    def __init__(self, index, modules, apollo_net):
+        self.index = index
         self.apollo_net = apollo_net
 
         # TODO eww
@@ -148,25 +168,33 @@ class Nmn:
             counter[0] += 1
             return r
         numbered = util.tree_map(number, modules)
-        assert util.flatten(numbered) == range(len(numbered))
+        assert util.flatten(numbered) == range(len(util.flatten(numbered)))
 
         def children(tree):
             if not isinstance(tree, tuple):
-                return ()
-            return tuple(c[0] if isinstance(c, tuple) else c for c in tree[1:])
+                return str(())
+            # TODO nasty hack to make flatten behave right
+            return str(tuple(c[0] if isinstance(c, tuple) else c for c in tree[1:]))
         child_annotated = util.tree_map(children, numbered)
 
         self.modules = util.flatten(modules)
-        self.children = child_annotated
+        #print child_annotated
+        #print util.flatten(child_annotated)
+        #print [eval(c) for c in util.flatten(child_annotated)]
+        self.children = [eval(c) for c in util.flatten(child_annotated)]
 
-    def forward(self, label_data, image, dropout):
-        flat_data = util.flatten(label_data)
+    def forward(self, label_data, image, dropout, qh=None):
+        flat_data = [util.flatten(d) for d in label_data]
+        flat_data = np.asarray(flat_data)
         outputs = [None for i in range(len(self.modules))]
         for i in reversed(range(len(self.modules))):
+            #print outputs, self.children
             bottoms = [outputs[j] for j in self.children[i]]
             assert None not in bottoms
+            mod_index = self.index * 100 + i
             output = self.modules[i].forward(
-                    i, label_data[i], bottoms, image, dropout, self.apollo_net)
+                    mod_index, flat_data[:,i], bottoms, image, dropout,
+                    self.apollo_net, qh=qh)
             outputs[i] = output
 
         return outputs[0]
@@ -183,7 +211,7 @@ class NmnModel:
 
     def get_nmn(self, modules):
         if modules not in self.nmns:
-            self.nmns[modules] = Nmn(modules, self.apollo_net)
+            self.nmns[modules] = Nmn(len(self.nmns), modules, self.apollo_net)
         return self.nmns[modules]
 
 
@@ -194,35 +222,88 @@ class NmnModel:
         question_hidden = self.forward_question(question_data, dropout)
         layout_ids, layout_probs = \
                 self.forward_layout(question_hidden, layouts, layout_data)
-        chosen_layouts = [ll[i] for ll, i in zip(layouts, layout_ids)]
-        assert len(set(l.modules for l in chosen_layouts)) == 1
-        modules = chosen_layouts[0].modules
-        layout_label_data = [l.labels for l in chosen_layouts] + \
-                [chosen_layouts[0].labels for i in range(self.opt_config.batch_size - len(layouts))]
+        #layout_ids = [0 for i in range(len(layouts))]
+        #layout_probs = [1 for i in range(len(layouts))]
 
         self.layout_ids = layout_ids
         self.layout_probs = layout_probs
 
+        chosen_layouts = [ll[i] for ll, i in zip(layouts, layout_ids)]
+
+        # prepare layout data
+
+        module_layouts = list(set(l.modules for l in chosen_layouts))
+        module_layout_choices = []
+        default_labels = [None for i in range(len(module_layouts))]
+        for layout in chosen_layouts:
+            choice = module_layouts.index(layout.modules)
+            module_layout_choices.append(choice)
+            if default_labels[choice] is None:
+                default_labels[choice] = layout.labels
+        layout_label_data = []
+        layout_mask = []
+        for layout, choice in zip(chosen_layouts, module_layout_choices):
+            labels_here = list(default_labels)
+            labels_here[choice] = layout.labels
+            layout_label_data.append(labels_here)
+            mask_here = [0 for i in range(len(module_layouts))]
+            mask_here[choice] = 1
+            layout_mask.append(mask_here)
+        #layout_label_data = np.asarray(layout_label_data)
+        layout_mask = np.asarray(layout_mask)
+
         # predict answer
 
-        nmn = self.get_nmn(modules)
-
         image = self.forward_image(image_data, dropout)
-        nmn_hidden = nmn.forward(layout_label_data, image, dropout)
+
+        nmn_hiddens = []
+        for i in range(len(module_layouts)):
+            module_layout = module_layouts[i]
+            #label_data = layout_label_data[i]
+            #print label_data
+            label_data = [lld[i] for lld in layout_label_data]
+            nmn = self.get_nmn(module_layout)
+            nmn_hidden = nmn.forward(label_data, image, dropout)
+            nmn_hiddens.append(nmn_hidden)
+
+        # TODO mask and combine
+        for h in nmn_hiddens:
+            batch_size = self.apollo_net.blobs[h].shape[0]
+            self.apollo_net.blobs[h].reshape(
+                    (batch_size, self.config.pred_hidden, 1))
+        if len(nmn_hiddens) == 1:
+            concat_layer = nmn_hiddens[0]
+        else:
+            self.apollo_net.f(Concat("CHOOSE_concat", axis=2, bottoms=nmn_hiddens))
+            concat_layer = "CHOOSE_concat"
+        self.apollo_net.f(NumpyData("CHOOSE_mask", layout_mask))
+        self.apollo_net.blobs["CHOOSE_mask"].reshape((batch_size, 1, len(module_layouts)))
+        self.apollo_net.f(Tile("CHOOSE_tile_mask", axis=1, tiles=self.config.pred_hidden, bottoms=["CHOOSE_mask"]))
+        self.apollo_net.f(Eltwise("CHOOSE_prod", "PROD", bottoms=["CHOOSE_tile_mask", concat_layer]))
+        self.apollo_net.f(InnerProduct(
+                "CHOOSE%d_sum" % len(module_layouts), 1, axis=2, bottoms=["CHOOSE_prod"],
+                weight_filler=Filler("constant", 1),
+                bias_filler=Filler("constant", 0),
+                param_lr_mults=[0, 0]))
+        self.apollo_net.blobs["CHOOSE%d_sum" % len(module_layouts)].reshape((batch_size, self.config.pred_hidden))
+        nmn_hidden = "CHOOSE%d_sum" % len(module_layouts)
+
         self.prediction = self.forward_pred(question_hidden, nmn_hidden)
 
         self.prediction_data = self.apollo_net.blobs[self.prediction].data
-        self.att_data = self.apollo_net.blobs["Attend_1_softmax"].data
-        self.att_data = self.att_data.reshape((-1, 14, 14))
+        self.att_data = np.zeros((batch_size, 14, 14))
+        #self.att_data = self.apollo_net.blobs["Attend_2_softmax"].data
+        #self.att_data = self.att_data.reshape((-1, 14, 14))
 
     def forward_layout(self, question_hidden, layouts, layout_data):
         net = self.apollo_net
-        batch_size, n_layouts = layout_data.shape
+        batch_size, n_layouts, n_features = layout_data.shape
 
         proj_question = "LAYOUT_proj_question"
         tile_question = "LAYOUT_tile%d_question" % n_layouts
-        layout_word = "LAYOUT_word_%d"
-        layout_wordvec = "LAYOUT_wordvec_%d"
+        layout_feats = "LAYOUT_feats_%d"
+        #layout_word = "LAYOUT_word_%d"
+        #layout_wordvec = "LAYOUT_wordvec_%d"
         concat = "LAYOUT_concat"
         sum = "LAYOUT_sum"
         relu = "LAYOUT_relu"
@@ -239,13 +320,19 @@ class NmnModel:
 
         concat_bottoms = []
         for i in range(n_layouts):
-            net.f(NumpyData(layout_word % i, layout_data[:,i]))
-            net.f(Wordvec(
-                    layout_wordvec % i, self.config.layout_hidden,
-                    len(MODULE_INDEX), bottoms=[layout_word % i]))
-            net.blobs[layout_wordvec % i].reshape(
+            #net.f(NumpyData(layout_word % i, layout_data[:,i]))
+            #net.f(Wordvec(
+            #        layout_wordvec % i, self.config.layout_hidden,
+            #        len(MODULE_INDEX), bottoms=[layout_word % i]))
+            #net.blobs[layout_wordvec % i].reshape(
+            #        (batch_size, 1, self.config.layout_hidden))
+            #concat_bottoms.append(layout_wordvec % i)
+
+            # TODO normalize these?
+            net.f(NumpyData(layout_feats % i, layout_data[:,i,:]))
+            net.blobs[layout_feats % i].reshape(
                     (batch_size, 1, self.config.layout_hidden))
-            concat_bottoms.append(layout_wordvec % i)
+            concat_bottoms.append(layout_feats % i)
 
         if n_layouts > 1:
             net.f(Concat(concat, axis=1, bottoms=concat_bottoms))
@@ -308,7 +395,7 @@ class NmnModel:
         output_gate_param = "QUESTION_output_gate_param"
 
         seed = "QUESTION_lstm_seed"
-        dropout = "QUESTION_lstm_dropout"
+        question_dropout = "QUESTION_lstm_dropout"
         final_hidden = "QUESTION_lstm_final_hidden"
 
         prev_hidden = seed
@@ -346,8 +433,8 @@ class NmnModel:
             pred_size = len(ANSWER_INDEX)
 
         if dropout:
-            net.f(Dropout(dropout, 0.5, bottoms=[prev_hidden]))
-            net.f(InnerProduct(final_hidden, pred_size, bottoms=[dropout]))
+            net.f(Dropout(question_dropout, 0.5, bottoms=[prev_hidden]))
+            net.f(InnerProduct(final_hidden, pred_size, bottoms=[question_dropout]))
         else:
             net.f(InnerProduct(final_hidden, pred_size, bottoms=[prev_hidden]))
 

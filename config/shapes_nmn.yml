@@ -1,15 +1,16 @@
 task:
-  name: cocoqa
-  debug: 1000
+  name: shapes
 
 model:
-  name: att
+  name: nmn
   lstm_hidden: 500
+  layout_hidden: 100
   att_hidden: 100
+  pred_hidden: 100
 
 opt:
   batch_size: 100
-  iters: 1001
+  iters: 1000
 
   rho: 0.95
   eps: 0.000001

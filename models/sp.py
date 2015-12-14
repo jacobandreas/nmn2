@@ -1,3 +1,5 @@
+#!/usr/bin/env python2
+
 from misc.indices import QUESTION_INDEX, ANSWER_INDEX, UNK_ID
 from opt import adadelta
 
@@ -5,7 +7,7 @@ import apollocaffe
 from apollocaffe.layers import *
 import numpy as np
 
-class AttModel:
+class StoredProgramModel:
     def __init__(self, config, opt_config):
         self.config = config
         self.opt_config = opt_config

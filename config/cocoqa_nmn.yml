@@ -1,6 +1,6 @@
 task:
   name: cocoqa
-  #debug: 1024
+  debug: 1000
 
 model:
   name: nmn

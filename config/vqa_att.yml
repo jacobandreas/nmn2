@@ -1,6 +1,9 @@
 task:
   name: vqa
-  #debug: 1024
+  #debug: 1013
+
+  multi: false
+  measure: false
 
 model:
   name: att
@@ -9,7 +12,7 @@ model:
 
 opt:
   batch_size: 100
-  iters: 1001
+  iters: 30
 
   rho: 0.95
   eps: 0.000001
