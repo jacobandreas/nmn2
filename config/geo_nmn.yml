@@ -1,0 +1,25 @@
+task:
+  name: geo
+  quant: false
+  fold: 1
+
+model:
+  name: nmn
+  lstm_hidden: 2
+  layout_hidden: 100
+  att_hidden: 100
+  #pred_hidden: 100
+
+opt:
+  batch_size: 100
+  iters: 500
+
+  rho: 0.95
+  eps: 0.000001
+  lr: 1
+  clip: 10.0
+
+  dropout: false
+  multiclass: true
+
+  log_preds: false

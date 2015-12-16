@@ -10,6 +10,9 @@ def load_task(config):
     elif config.task.name == "shapes":
         from shapes import ShapesTask
         return ShapesTask(config)
+    elif config.task.name == "geo":
+        from geo import GeoTask
+        return GeoTask(config)
     #elif config.task.name == "daquar":
     #    from daquar import DaquarTask
     #    return DaquarTask(config)

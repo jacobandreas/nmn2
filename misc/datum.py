@@ -4,8 +4,8 @@ from collections import namedtuple
 
 class Layout:
     def __init__(self, modules, labels):
-        assert isinstance(modules, tuple)
-        assert isinstance(labels, tuple)
+        #assert isinstance(modules, tuple)
+        #assert isinstance(labels, tuple)
         self.modules = modules
         self.labels = labels
 

@@ -39,8 +39,9 @@ def main():
                 train_loss, val_loss, test_loss,
                 train_acc, val_acc, test_acc)
 
-        with open("logs/val_predictions_%d.json" % i_epoch, "w") as pred_f:
-            print >>pred_f, json.dumps(val_predictions)
+        if config.opt.log_preds:
+            with open("logs/val_predictions_%d.json" % i_epoch, "w") as pred_f:
+                print >>pred_f, json.dumps(val_predictions)
 
 def configure():
     apollocaffe.set_random_seed(0)
@@ -124,7 +125,7 @@ def do_iter(task_set, model, config, train=False, vis=False):
 def do_batch(data, model, config, train, vis):
     predictions = forward(data, model, config, train, vis)
     answer_loss = backward(data, model, config, train, vis)
-    acc = compute_acc(predictions, data)
+    acc = compute_acc(predictions, data, config)
 
     return answer_loss, acc, predictions
 
@@ -152,12 +153,22 @@ def forward(data, model, config, train, vis):
     #            [l.labels[1] for l in datum.layouts]
 
     # apply model
-    model.forward(layouts, layout_reprs, questions, images, dropout=train)
+    model.forward(
+            layouts, layout_reprs, questions, images,
+            dropout=(train and config.opt.dropout))
 
     # extract predictions
     predictions = list()
-    pred_ids = np.argmax(model.prediction_data, axis=1)
-    pred_words = [ANSWER_INDEX.get(w) for w in pred_ids]
+    if config.opt.multiclass:
+        pred_words = []
+        for i in range(model.prediction_data.shape[0]):
+            preds = model.prediction_data[i, :]
+            chosen = np.where(preds > 0)[0]
+            pred_words.append(set(ANSWER_INDEX.get(w) for w in chosen))
+    else:
+        pred_ids = np.argmax(model.prediction_data, axis=1)
+        pred_words = [ANSWER_INDEX.get(w) for w in pred_ids]
+
     for i in range(len(data)):
         qid = data[i].id
         answer = pred_words[i]
@@ -170,21 +181,35 @@ def backward(data, model, config, train, vis):
     loss = 0
 
     for i in range(n_answers):
-        output_i = UNK_ID * np.ones(config.opt.batch_size)
-        output_i[:len(data)] = \
-                np.asarray([d.answers[i] for d in data])
-        loss += model.loss(output_i)
+        if config.opt.multiclass:
+            output_i = np.zeros((config.opt.batch_size, len(ANSWER_INDEX)))
+            for i_datum, datum in enumerate(data):
+                for answer in datum.answers[i]:
+                    output_i[i_datum, answer] = 1
+        else:
+            output_i = UNK_ID * np.ones(config.opt.batch_size)
+            output_i[:len(data)] = \
+                    np.asarray([d.answers[i] for d in data])
 
-    model.train()
+        loss += model.loss(output_i, multiclass=config.opt.multiclass)
+
+    if train:
+        model.train()
 
     return loss
 
-def compute_acc(predictions, data):
+def compute_acc(predictions, data, config):
+    #print [prediction["answer"] for prediction in predictions]
+    #print [ANSWER_INDEX.get(d.answers[0]) for d in data]
     score = 0.0
     for prediction, datum in zip(predictions, data):
         pred_answer = prediction["answer"]
-        answers = [ANSWER_INDEX.get(a) for a in datum.answers]
+        if config.opt.multiclass:
+            answers = [set(ANSWER_INDEX.get(aa) for aa in a) for a in datum.answers]
+        else:
+            answers = [ANSWER_INDEX.get(a) for a in datum.answers]
         matching_answers = [a for a in answers if a == pred_answer]
+        print pred_answer, answers
         if len(answers) == 1:
             score += len(matching_answers)
         else:

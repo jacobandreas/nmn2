@@ -237,7 +237,7 @@ class VqaTaskSet:
                 image_id = question["image_id"]
                 try:
                     image_set_name = "test2015" if set_name == "test-dev2015" else set_name
-                    layouts = layouts[:2]
+                    #layouts = layouts[:2]
                     datum = VqaDatum(id, indexed_question, layouts, image_set_name, image_id, [], mean, std)
                     self.by_id[id] = datum
                 except IOError as e:
