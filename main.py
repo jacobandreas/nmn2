@@ -10,6 +10,7 @@ from misc.indices import QUESTION_INDEX, ANSWER_INDEX, MODULE_INDEX, \
 from misc.visualizer import visualizer
 import models
 import tasks
+from models.nmn import *
 
 import apollocaffe
 import argparse
@@ -21,8 +22,15 @@ import yaml
 
 def main():
     config = configure()
-    task = tasks.load_task(config)
     model = models.build_model(config.model, config.opt)
+
+    #config.task.subset = 100
+    #tasks.load_task(config)
+
+    #for i_subset in range(5):
+    #for i_subset in [10]:
+    #config.task.subset = i_subset
+    task = tasks.load_task(config)
 
     for i_epoch in range(config.opt.iters):
 
@@ -93,8 +101,8 @@ def do_iter(task_set, model, config, train=False, vis=False):
         batch_loss, batch_acc, batch_preds = do_batch(
                 batch_data, model, config, train, vis)
 
-        loss += batch_loss
-        acc += batch_acc
+        loss += len(batch_data) * batch_loss
+        acc += len(batch_data) * batch_acc
         predictions += batch_preds
         n_batches += 1
 
@@ -118,14 +126,20 @@ def do_iter(task_set, model, config, train=False, vis=False):
     if n_batches == 0:
         return 0, 0, dict()
     assert len(predictions) == len(data)
-    loss /= n_batches
-    acc /= n_batches
+    loss /= len(data)
+    acc /= len(data)
     return loss, acc, predictions
 
 def do_batch(data, model, config, train, vis):
+    #print "\n"
+    #print "\n".join([str(d.layouts[0].labels) for d in data])
     predictions = forward(data, model, config, train, vis)
     answer_loss = backward(data, model, config, train, vis)
-    acc = compute_acc(predictions, data, config)
+    if not train:
+        acc = compute_acc(predictions, data, config)
+    else:
+        acc = compute_acc(predictions, data, config)
+        #acc = 0
 
     return answer_loss, acc, predictions
 
@@ -135,27 +149,45 @@ def forward(data, model, config, train, vis):
     # load batch data
     max_len = max(len(d.question) for d in data)
     max_layouts = max(len(d.layouts) for d in data)
-    channels, width, height = data[0].load_image().shape
+    channels, image_size, trailing = data[0].load_features().shape
+    assert trailing == 1
+    rel_channels, is1, is2 = data[0].load_rel_features().shape
+    assert is1 == is2 == image_size
     questions = np.ones((config.opt.batch_size, max_len)) * NULL_ID
-    images = np.zeros((config.opt.batch_size, channels, width, height))
-    layout_reprs = np.zeros((config.opt.batch_size, max_layouts, len(MODULE_INDEX)))
+    features = np.zeros((config.opt.batch_size, channels, image_size, 1))
+    rel_features = np.zeros((config.opt.batch_size, rel_channels, image_size, image_size))
+    layout_reprs = np.zeros((config.opt.batch_size, max_layouts, len(MODULE_INDEX) + 10))
+
+    mod_index = dict()
     for i, datum in enumerate(data):
         questions[i, max_len-len(datum.question):] = datum.question
-        images[i, ...] = datum.load_image()
-        for i_layout in range(len(datum.layouts)):
-            feats = util.flatten(datum.layouts[i_layout].labels)
-            layout_reprs[i,i_layout,feats] = 1
-    layouts = [d.layouts for d in data]
+        features[i, ...] = datum.load_features()
+        rel_features[i, ...] = datum.load_rel_features()
+        ## for i_layout in range(len(datum.layouts)):
+        ##     layout = datum.layouts[i_layout]
+        ##     labels = util.flatten(layout.labels)
+        ##     modules = util.flatten(layout.modules)
+        ##     for i_mod in range(len(modules)):
+        ##         if isinstance(modules[i_mod], AttendModule):
+        ##             layout_reprs[i, i_layout, labels[i_mod]] += 1
 
-    #layout_reprs = np.ones((config.opt.batch_size, max_layouts)) * NULL_ID
-    #for i, datum in enumerate(data):
-    #    layout_reprs[i, max_layouts-len(datum.layouts):] = \
-    #            [l.labels[1] for l in datum.layouts]
+        ##         if modules[i_mod] not in mod_index:
+        ##             mod_index[modules[i_mod]] = len(mod_index)
+
+        ##         layout_reprs[i, i_layout, len(MODULE_INDEX) + mod_index[modules[i_mod]]] += 1
+
+        ##     #print layout
+        ##     #exit()
+        ##     #feats = util.flatten(datum.layouts[i_layout].labels)
+        ##     #print feats
+        ##     #layout_reprs[i,i_layout,feats] = 1
+    layouts = [d.layouts for d in data]
 
     # apply model
     model.forward(
-            layouts, layout_reprs, questions, images,
-            dropout=(train and config.opt.dropout))
+            layouts, layout_reprs, questions, features, rel_features,
+            dropout=(train and config.opt.dropout),
+            deterministic=not train)
 
     # extract predictions
     predictions = list()
@@ -163,7 +195,7 @@ def forward(data, model, config, train, vis):
         pred_words = []
         for i in range(model.prediction_data.shape[0]):
             preds = model.prediction_data[i, :]
-            chosen = np.where(preds > 0)[0]
+            chosen = np.where(preds > 0.5)[0]
             pred_words.append(set(ANSWER_INDEX.get(w) for w in chosen))
     else:
         pred_ids = np.argmax(model.prediction_data, axis=1)
@@ -199,8 +231,6 @@ def backward(data, model, config, train, vis):
     return loss
 
 def compute_acc(predictions, data, config):
-    #print [prediction["answer"] for prediction in predictions]
-    #print [ANSWER_INDEX.get(d.answers[0]) for d in data]
     score = 0.0
     for prediction, datum in zip(predictions, data):
         pred_answer = prediction["answer"]
@@ -208,8 +238,13 @@ def compute_acc(predictions, data, config):
             answers = [set(ANSWER_INDEX.get(aa) for aa in a) for a in datum.answers]
         else:
             answers = [ANSWER_INDEX.get(a) for a in datum.answers]
+
+        #print " ".join([QUESTION_INDEX.get(w) for w in datum.question])
+        #print pred_answer
+        #print answers
+        #print
+
         matching_answers = [a for a in answers if a == pred_answer]
-        print pred_answer, answers
         if len(answers) == 1:
             score += len(matching_answers)
         else:

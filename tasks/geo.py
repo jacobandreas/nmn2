@@ -3,6 +3,7 @@
 from misc.datum import Datum, Layout
 from misc.indices import QUESTION_INDEX, MODULE_INDEX, ANSWER_INDEX, UNK_ID
 from misc.parse import parse_tree
+import misc.util
 from models.nmn import AttendModule, ClassifyModule, MeasureModule, \
         CombineModule, ReAttendModule, LookupModule, AnswerTranslationModule
 
@@ -11,17 +12,32 @@ import logging
 import numpy as np
 import os
 import re
+import xml.etree.ElementTree as ET
 
 DATA_FILE = "data/geo/environments/%s/training.txt"
 PARSE_FILE = "data/geo/environments/%s/training.sps"
 WORLD_FILE = "data/geo/environments/%s/world.txt"
 LOCATION_FILE = "data/geo/environments/%s/locations.txt"
+POLYGON_FILE = "data/geo/polygons/%s.xml"
+POLYGON_DIR = "data/geo/polygons"
 
 ENVIRONMENTS = ["fl", "ga", "mi", "nc", "ok", "pa", "sc", "tn", "va", "wv"]
-#ENVIRONMENTS = ["fl"]
+#ENVIRONMENTS = ["ok"]
 
 CATS = ["city", "state", "park", "island", "beach", "ocean", "lake", "forest",
-        "major", "peninsula", "capital", "water"]
+        "major", "peninsula", "capital"]
+        #"water",
+        #"in-rel", "in-rel_pair1", "in-rel_pair2",
+        #"north-rel", "north-rel_pair1", "north-rel_pair2",
+        #"south-rel", "south-rel_pair1", "south-rel_pair2",
+        #"east-rel", "east-rel_pair1", "east-rel_pair2",
+        #"west-rel", "west-rel_pair1", "west-rel_pair2",
+        #"border-rel", "border-rel_pair1", "border-rel_pair2",
+        ##"BBOX_0", "BBOX_1", "BBOX_2", "BBOX_3",
+        ##"LAT", "LON",
+        #"const"]
+#CATS=["city"]
+RELS = ["in-rel", "north-rel", "south-rel", "east-rel", "west-rel", "border-rel"]
 
 DATABASE_SIZE=10
 
@@ -32,17 +48,19 @@ TEST = 2
 YES = "yes"
 NO = "no"
 
-World = namedtuple("World", ("name", "categories", "entities", "features"))
+World = namedtuple("World", ("name", "entities", "entity_features", "relation_features"))
 
 def parse_to_layout_helper(parse, world, config, modules):
     if isinstance(parse, str):
         if parse in world.entities:
             return modules["lookup"], world.entities[parse]
-        elif parse in world.categories:
-            return modules["attend"], world.categories[parse]
         else:
-            logging.warn("weird predicate: %s", parse)
-            return modules["attend"], UNK_ID
+            return modules["attend"], MODULE_INDEX.index(parse)
+        #elif parse in world.categories:
+        #    return modules["attend"], MODULE_INDEX.index(parse) # world.categories[parse]
+        #else:
+        #    logging.warn("weird predicate: %s", parse)
+        #    return modules["attend"], UNK_ID
         #return modules["attend"], MODULE_INDEX[parse] or UNK_ID
     head = parse[0]
     below = [parse_to_layout_helper(c, world, config, modules) for c in parse[1:]]
@@ -55,7 +73,8 @@ def parse_to_layout_helper(parse, world, config, modules):
         module_head = modules["measure"]
     else:
         module_head = modules["re-attend"]
-    label_head = MODULE_INDEX[head] or UNK_ID
+    #label_head = MODULE_INDEX[head] or UNK_ID
+    label_head = MODULE_INDEX.index(head)
     modules_here = (module_head,) + modules_below
     labels_here = (label_head,) + labels_below
     return modules_here, labels_here
@@ -67,7 +86,7 @@ def parse_to_layout(parse, world, config, modules):
     if not isinstance(head, MeasureModule):
         # wrap in translation module
         # TODO bad naming
-        mapping = {i: ANSWER_INDEX[cat] for i, cat in enumerate(world.entities)}
+        mapping = {i: ANSWER_INDEX[ent] for ent, i in world.entities.items()}
         index = modules["translate"].register(world.name, mapping)
         mods = (modules["translate"], mods)
         indices = (index, indices)
@@ -82,13 +101,16 @@ class GeoDatum(Datum):
         self.answers = [answer]
         self.world = world
 
-    def load_image(self):
-        return self.world.features
+    def load_features(self):
+        return self.world.entity_features
+
+    def load_rel_features(self):
+        return self.world.relation_features
 
 class GeoTask:
     def __init__(self, config):
-        for cat in CATS:
-            MODULE_INDEX.index(cat)
+        #for cat in CATS:
+        #    MODULE_INDEX.index(cat)
         modules = {
             "attend": AttendModule(config.model),
             "lookup": LookupModule(config.model),
@@ -124,39 +146,131 @@ class GeoTaskSet:
 
             #database = np.random.random((101, 102, 1))
 
-            locations = dict()
+            places = list()
             with open(LOCATION_FILE % environment) as loc_f:
                 for line in loc_f:
                     parts = line.strip().split(";")
-                    locations[parts[0]] = -0.5 * np.ones(len(CATS))
+                    places.append(parts[0])
+
+            cats = {place: np.zeros((len(CATS),)) for place in places}
+            rels = {(pl1, pl2): np.zeros((len(RELS),)) for pl1 in places for pl2 in places}
 
             with open(WORLD_FILE % environment) as world_f:
                 for line in world_f:
                     parts = line.strip().split(";")
-                    cat = parts[0][1:]
-                    if cat not in CATS:
+                    if len(parts) < 2:
                         continue
-                    places = parts[1].split(",")
-                    cat_id = CATS.index(cat)
-                    for place in places:
-                        locations[place][cat_id] = 0.5
+                    name = parts[0][1:]
+                    places_here = parts[1].split(",")
+                    if name in CATS:
+                        cat_id = CATS.index(name)
+                        for place in places_here:
+                            cats[place][cat_id] = 1
+                    elif name in RELS:
+                        rel_id = RELS.index(name)
+                        for place_pair in places_here:
+                            pl1, pl2 = place_pair.split("#")
+                            rels[pl1, pl2][rel_id] = 1
+                            rels[pl2, pl1][rel_id] = -1
 
-            loc_keys = sorted(locations.keys())
-            clean_loc_keys = [k.lower().replace(" ", "_") for k in loc_keys]
+            clean_places = [p.lower().replace(" ", "_") for p in places]
+            place_index = {place: i for (i, place) in enumerate(places)}
+            clean_place_index = {place: i for (i, place) in enumerate(clean_places)}
+            
+            cat_features = np.zeros((len(CATS), DATABASE_SIZE, 1))
+            rel_features = np.zeros((len(RELS), DATABASE_SIZE, DATABASE_SIZE))
 
-            for k in clean_loc_keys:
-                ANSWER_INDEX.index(k)
+            for p1, i_p1 in place_index.items():
+                cat_features[:, i_p1, 0] = cats[p1]
+                for p2, i_p2 in place_index.items():
+                    rel_features[:, i_p1, i_p2] = rels[p1, p2]
 
-            cat_index = {cat: i for i, cat in enumerate(CATS)}
-            loc_index = {loc: i for i, loc in enumerate(clean_loc_keys)}
-            database = np.asarray([locations[l] for l in loc_keys])
-            database = database.T
-            database = database.reshape((len(CATS), len(loc_keys), 1))
+            world = World(environment, clean_place_index, cat_features, rel_features)
 
-            features = np.zeros((database.shape[0], DATABASE_SIZE, 1))
-            features[:, :database.shape[1], :] = database
+            for place in clean_places:
+                ANSWER_INDEX.index(place)
 
-            world = World(environment, cat_index, loc_index, features)
+            #### with open(WORLD_FILE % environment) as world_f:
+            ####     for line in world_f:
+            ####         parts = line.strip().split(";")
+            ####         cat = parts[0][1:]
+            ####         #print cat
+            ####         if cat not in CATS:
+            ####             continue
+            ####         places = parts[1].split(",")
+            ####         cat_id = CATS.index(cat)
+            ####         for place in places:
+            ####             if "#" in place:
+            ####                 from_pl, to_pl = place.split("#")
+            ####                 pair1_cat = cat + "_pair1"
+            ####                 pair1_cat_id = CATS.index(pair1_cat)
+            ####                 pair2_cat = cat + "_pair2"
+            ####                 pair2_cat_id = CATS.index(pair2_cat)
+            ####                 rnd1 = np.random.random()
+            ####                 rnd1 *= np.random.randint(2)
+            ####                 rnd2 = np.random.random()
+            ####                 rnd2 *= np.random.randint(2)
+            ####                 locations[from_pl][cat_id] = 1
+            ####                 if rnd1: locations[from_pl][pair1_cat_id] = rnd1
+            ####                 if rnd2: locations[from_pl][pair2_cat_id] = rnd2
+            ####                 locations[to_pl][cat_id] = -1
+            ####                 if rnd1: locations[to_pl][pair1_cat_id] = rnd1
+            ####                 if rnd2: locations[to_pl][pair2_cat_id] = rnd2
+
+            ####             else:
+            ####                 locations[place][cat_id] = 1
+
+            #### polygons = dict()
+            #### for location in locations:
+            ####     esc_location = location.replace(" ", "+")
+            ####     try:
+            ####         pf = POLYGON_FILE % esc_location
+            ####         doc = ET.parse(pf)
+            ####     except:
+            ####         names = os.listdir(POLYGON_DIR)
+            ####         candidates = [c for c in names if c[:len(esc_location)] ==
+            ####                 esc_location]
+            ####         logging.warn("%s -> %s", location, candidates[0])
+            ####         doc = ET.parse(POLYGON_DIR + "/" + candidates[0])
+            ####     root = doc.getroot()
+            ####     place = root.find("place")
+            ####     bbox = place.attrib["boundingbox"]
+            ####     polygons[location] = [float(c) for c in bbox.split(",")]
+
+            #### maxes = np.max(polygons.values(), axis=0)
+            #### mins = np.min(polygons.values(), axis=0)
+            #### extremes = [mins[0], maxes[1], mins[2], maxes[3]]
+            #### for location, points in polygons.items():
+            ####     longitude = (points[2] + points[3]) / 2
+            ####     latitude = (points[0] + points[1]) / 2
+            ####     longitude = (longitude - mins[2]) / (maxes[3] - mins[2])
+            ####     latitude = (latitude - mins[0]) / (maxes[1] - mins[0])
+            ####     #locations[location][CATS.index("LAT")] = latitude
+            ####     #locations[location][CATS.index("LON")] = longitude
+
+            ####     #for i_coord, coord in enumerate(bbox.split(",")):
+            ####     #    coord = float(coord) / 360
+            ####     #    feat_name = "BBOX_%d" % i_coord
+            ####     #    #locations[location][CATS.index(feat_name)] = coord
+            ####     #print locations[location]
+            #### #exit()
+
+            #### loc_keys = sorted(locations.keys())
+            #### clean_loc_keys = [k.lower().replace(" ", "_") for k in loc_keys]
+
+            #### for k in clean_loc_keys:
+            ####     ANSWER_INDEX.index(k)
+
+            #### cat_index = {cat: i for i, cat in enumerate(CATS)}
+            #### loc_index = {loc: i for i, loc in enumerate(clean_loc_keys)}
+            #### database = np.asarray([locations[l] for l in loc_keys])
+            #### database = database.T
+            #### database = database.reshape((len(CATS), len(loc_keys), 1))
+
+            #### features = np.zeros((database.shape[0], DATABASE_SIZE, 1))
+            #### features[:, :database.shape[1], :] = database
+
+            #print loc_index
 
             with open(DATA_FILE % environment) as data_f:
                 for line in data_f:
@@ -198,6 +312,29 @@ class GeoTaskSet:
             # TODO
             parse_list = parse_list[-1:]
 
+            #max_size = max(len(misc.util.flatten(p)) for p in parse_list)
+            #if max_size - 1 > config.subset:
+            #    continue
+
+            #if not (isinstance(parse_list[0], str) and parse_list[0] not in CATS):
+            #    continue
+
+            #if not isinstance(parse_list[0], str):
+            #    continue
+
+            #if len(misc.util.flatten(parse_list[0])) != 4:
+            #    continue
+
+            #if misc.util.flatten(parse_list[0]) == parse_list[0]:
+            #    continue
+
+
+            #if not (len(misc.util.flatten(parse_list[0])) == 4 and
+            #        parse_list[0][2][0] == "east_of"):
+            #    continue
+
+            print parse_list[0]
+
             indexed_question = [QUESTION_INDEX.index(w) for w in tokens]
             indexed_answer = \
                     tuple(ANSWER_INDEX[a] for a in answer.split(",") if a != "")
@@ -209,7 +346,6 @@ class GeoTaskSet:
             i_datum += 1
 
         self.data = data
-        #self.data = data[:10]
 
         logging.info("%s:", set_name)
         logging.info("%s items", len(self.data))
