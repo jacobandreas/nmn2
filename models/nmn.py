@@ -933,8 +933,10 @@ class NmnModel:
             #net.f(Sigmoid(datum_loss, bottoms=[self.prediction]))
             pred_probs = net.blobs[self.prediction].data
             batch_size = pred_probs.shape[0]
-            pred_ans_probs = np.sum(np.abs(answer_data - pred_probs), axis=1)
-            pred_ans_log_probs = np.log(pred_ans_probs)
+            pred_ans_probs = np.sum(np.abs(answer_data - pred_probs) ** 2, axis=1)
+            # TODO
+            pred_ans_log_probs = pred_ans_probs
+            #pred_ans_log_probs = np.log(pred_ans_probs)
         else:
             net.f(NumpyData(target, answer_data))
             acc_loss = net.f(SoftmaxWithLoss(

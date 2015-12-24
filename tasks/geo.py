@@ -26,17 +26,6 @@ ENVIRONMENTS = ["fl", "ga", "mi", "nc", "ok", "pa", "sc", "tn", "va", "wv"]
 
 CATS = ["city", "state", "park", "island", "beach", "ocean", "lake", "forest",
         "major", "peninsula", "capital"]
-        #"water",
-        #"in-rel", "in-rel_pair1", "in-rel_pair2",
-        #"north-rel", "north-rel_pair1", "north-rel_pair2",
-        #"south-rel", "south-rel_pair1", "south-rel_pair2",
-        #"east-rel", "east-rel_pair1", "east-rel_pair2",
-        #"west-rel", "west-rel_pair1", "west-rel_pair2",
-        #"border-rel", "border-rel_pair1", "border-rel_pair2",
-        ##"BBOX_0", "BBOX_1", "BBOX_2", "BBOX_3",
-        ##"LAT", "LON",
-        #"const"]
-#CATS=["city"]
 RELS = ["in-rel", "north-rel", "south-rel", "east-rel", "west-rel", "border-rel"]
 
 DATABASE_SIZE=10
@@ -310,30 +299,7 @@ class GeoTaskSet:
             tokens = ["<s>"] + question.split() + ["</s>"]
 
             # TODO
-            parse_list = parse_list[-1:]
-
-            #max_size = max(len(misc.util.flatten(p)) for p in parse_list)
-            #if max_size - 1 > config.subset:
-            #    continue
-
-            #if not (isinstance(parse_list[0], str) and parse_list[0] not in CATS):
-            #    continue
-
-            #if not isinstance(parse_list[0], str):
-            #    continue
-
-            #if len(misc.util.flatten(parse_list[0])) != 4:
-            #    continue
-
-            #if misc.util.flatten(parse_list[0]) == parse_list[0]:
-            #    continue
-
-
-            #if not (len(misc.util.flatten(parse_list[0])) == 4 and
-            #        parse_list[0][2][0] == "east_of"):
-            #    continue
-
-            print parse_list[0]
+            #parse_list = parse_list[-1:]
 
             indexed_question = [QUESTION_INDEX.index(w) for w in tokens]
             indexed_answer = \

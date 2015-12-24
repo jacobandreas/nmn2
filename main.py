@@ -163,24 +163,24 @@ def forward(data, model, config, train, vis):
         questions[i, max_len-len(datum.question):] = datum.question
         features[i, ...] = datum.load_features()
         rel_features[i, ...] = datum.load_rel_features()
-        ## for i_layout in range(len(datum.layouts)):
-        ##     layout = datum.layouts[i_layout]
-        ##     labels = util.flatten(layout.labels)
-        ##     modules = util.flatten(layout.modules)
-        ##     for i_mod in range(len(modules)):
-        ##         if isinstance(modules[i_mod], AttendModule):
-        ##             layout_reprs[i, i_layout, labels[i_mod]] += 1
+        for i_layout in range(len(datum.layouts)):
+            layout = datum.layouts[i_layout]
+            labels = util.flatten(layout.labels)
+            modules = util.flatten(layout.modules)
+            for i_mod in range(len(modules)):
+                if isinstance(modules[i_mod], AttendModule):
+                    layout_reprs[i, i_layout, labels[i_mod]] += 1
 
-        ##         if modules[i_mod] not in mod_index:
-        ##             mod_index[modules[i_mod]] = len(mod_index)
+                if modules[i_mod] not in mod_index:
+                    mod_index[modules[i_mod]] = len(mod_index)
 
-        ##         layout_reprs[i, i_layout, len(MODULE_INDEX) + mod_index[modules[i_mod]]] += 1
+                layout_reprs[i, i_layout, len(MODULE_INDEX) + mod_index[modules[i_mod]]] += 1
 
-        ##     #print layout
-        ##     #exit()
-        ##     #feats = util.flatten(datum.layouts[i_layout].labels)
-        ##     #print feats
-        ##     #layout_reprs[i,i_layout,feats] = 1
+            #print layout
+            #exit()
+            #feats = util.flatten(datum.layouts[i_layout].labels)
+            #print feats
+            #layout_reprs[i,i_layout,feats] = 1
     layouts = [d.layouts for d in data]
 
     # apply model
