@@ -25,7 +25,7 @@ class AsLoss(PyLayer):
         top[0].data[...] = bottom[0].data
 
     def backward(self, top, bottom):
-        bottom[0].diff[...] = top[0].diff
+        bottom[0].diff[...] = top[0].data
 
 class Reduction(LossLayer):
     def __init__(self, name, axis, **kwargs):

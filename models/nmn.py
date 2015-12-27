@@ -746,6 +746,7 @@ class NmnModel:
         proj_question = "LAYOUT_proj_question"
         tile_question = "LAYOUT_tile%d_question" % n_layouts
         layout_feats = "LAYOUT_feats_%d"
+        proj_layout = "LAYOUT_proj_layout_%d"
         #layout_word = "LAYOUT_word_%d"
         #layout_wordvec = "LAYOUT_wordvec_%d"
         concat = "LAYOUT_concat"
@@ -774,9 +775,11 @@ class NmnModel:
 
             # TODO normalize these?
             net.f(NumpyData(layout_feats % i, layout_data[:,i,:]))
-            net.blobs[layout_feats % i].reshape(
+            net.f(InnerProduct(proj_layout % i, self.config.layout_hidden,
+                    bottoms=[layout_feats % i]))
+            net.blobs[proj_layout % i].reshape(
                     (batch_size, 1, self.config.layout_hidden))
-            concat_bottoms.append(layout_feats % i)
+            concat_bottoms.append(proj_layout % i)
 
         if n_layouts > 1:
             net.f(Concat(concat, axis=1, bottoms=concat_bottoms))
@@ -801,7 +804,6 @@ class NmnModel:
             else:
                 choice = np.random.choice(pr_here.size, p=pr_here)
             layout_choices.append(choice)
-            # TODO check to ensure choice is in bounds for this datum
         for i in range(batch_size - len(layouts)):
             layout_choices.append(0)
 
@@ -950,7 +952,7 @@ class NmnModel:
             pred_ans_log_probs = np.log(pred_ans_probs)
             pred_ans_log_probs[answer_data == UNK_ID] = 0
 
-        self.cumulative_datum_losses -= pred_ans_log_probs
+        self.cumulative_datum_losses += pred_ans_log_probs
 
         return acc_loss
 
@@ -964,12 +966,25 @@ class NmnModel:
         reduction = "REINFORCE_reduction"
         loss = "REINFORCE_loss"
 
+        #print
+        #print net.blobs[self.layout_probs].data
+        #print self.layout_ids
+        #print losses
+
         net.f(NumpyData(choice_data, self.layout_ids))
         net.f(NumpyData(loss_data, losses))
         net.f(Index(index, {}, bottoms=[self.layout_probs, choice_data]))
         net.f(Eltwise(weight, "PROD", bottoms=[index, loss_data]))
-        from layers.reinforce import Reduction
-        net.f(Reduction(reduction, 0, bottoms=[weight], loss_weight=1.0))
+
+
+        # TODO
+        net.f(AsLoss(loss, bottoms=[weight]))
+        #net.f(NumpyData("zero", np.zeros(net.blobs[weight].shape)))
+        #net.f(EuclideanLoss(loss, bottoms=[weight, "zero"]))
+        #from layers.reinforce import Reduction
+        #net.f(Reduction(reduction, 0, bottoms=[weight], loss_weight=1.0))
+
+        #print "weight", net.blobs[weight].data
 
     def reset(self):
         self.apollo_net.clear_forward()
@@ -981,4 +996,6 @@ class NmnModel:
         self.reinforce_layout(self.cumulative_datum_losses)
         self.apollo_net.backward()
         adadelta.update(self.apollo_net, self.opt_state, self.opt_config)
+
+        #print "diff", self.apollo_net.blobs["REINFORCE_weight"].diff
         #self.apollo_net.update(lr=0.5, momentum=0.9)

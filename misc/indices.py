@@ -7,6 +7,7 @@ NULL = "*null*"
 
 QUESTION_INDEX = Index()
 MODULE_INDEX = Index()
+MODULE_TYPE_INDEX = Index()
 ANSWER_INDEX = Index()
 
 UNK_ID = QUESTION_INDEX.index(UNK)

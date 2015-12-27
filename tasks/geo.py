@@ -22,7 +22,7 @@ POLYGON_FILE = "data/geo/polygons/%s.xml"
 POLYGON_DIR = "data/geo/polygons"
 
 ENVIRONMENTS = ["fl", "ga", "mi", "nc", "ok", "pa", "sc", "tn", "va", "wv"]
-#ENVIRONMENTS = ["ok"]
+#ENVIRONMENTS = ["fl"]
 
 CATS = ["city", "state", "park", "island", "beach", "ocean", "lake", "forest",
         "major", "peninsula", "capital"]

@@ -6,7 +6,7 @@ if not isinstance(__builtins__, dict) or "profile" not in __builtins__:
 
 from misc import util
 from misc.indices import QUESTION_INDEX, ANSWER_INDEX, MODULE_INDEX, \
-        NULL, NULL_ID, UNK_ID
+        MODULE_TYPE_INDEX, NULL, NULL_ID, UNK_ID
 from misc.visualizer import visualizer
 import models
 import tasks
@@ -158,7 +158,6 @@ def forward(data, model, config, train, vis):
     rel_features = np.zeros((config.opt.batch_size, rel_channels, image_size, image_size))
     layout_reprs = np.zeros((config.opt.batch_size, max_layouts, len(MODULE_INDEX) + 10))
 
-    mod_index = dict()
     for i, datum in enumerate(data):
         questions[i, max_len-len(datum.question):] = datum.question
         features[i, ...] = datum.load_features()
@@ -171,10 +170,8 @@ def forward(data, model, config, train, vis):
                 if isinstance(modules[i_mod], AttendModule):
                     layout_reprs[i, i_layout, labels[i_mod]] += 1
 
-                if modules[i_mod] not in mod_index:
-                    mod_index[modules[i_mod]] = len(mod_index)
-
-                layout_reprs[i, i_layout, len(MODULE_INDEX) + mod_index[modules[i_mod]]] += 1
+                mt = MODULE_TYPE_INDEX.index(modules[i_mod])
+                layout_reprs[i, i_layout, len(MODULE_INDEX) + mt] += 1
 
             #print layout
             #exit()
