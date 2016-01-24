@@ -5,10 +5,11 @@ if not isinstance(__builtins__, dict) or "profile" not in __builtins__:
     __builtins__.__dict__["profile"] = lambda x: x
 
 from misc import util
-from misc.indices import QUESTION_INDEX, ANSWER_INDEX, MODULE_INDEX, \
+from misc.indices import QUESTION_INDEX, ANSWER_INDEX, MODULE_INDEX, MODULE_TYPE_INDEX, \
         NULL, NULL_ID, UNK_ID
 from misc.visualizer import visualizer
 import models
+from models.nmn import AttendModule
 import tasks
 
 import apollocaffe
@@ -30,8 +31,9 @@ def main():
                 do_iter(task.train, model, config, train=True)
         val_loss, val_acc, val_predictions = \
                 do_iter(task.val, model, config, vis=True)
-        test_loss, test_acc, _ = \
-                do_iter(task.test, model, config)
+        #test_loss, test_acc, test_predictions = \
+        #        do_iter(task.test, model, config)
+        test_loss, test_acc = 0, 0
 
         logging.info(
                 "%5d  |  %2.3f  %2.3f  %2.3f  |  %2.3f  %2.3f  %2.3f",
@@ -41,6 +43,9 @@ def main():
 
         with open("logs/val_predictions_%d.json" % i_epoch, "w") as pred_f:
             print >>pred_f, json.dumps(val_predictions)
+
+        #with open("logs/test_predictions_%d.json" % i_epoch, "w") as pred_f:
+        #    print >>pred_f, json.dumps(test_predictions)
 
 def configure():
     apollocaffe.set_random_seed(0)
@@ -98,18 +103,42 @@ def do_iter(task_set, model, config, train=False, vis=False):
         n_batches += 1
 
         if vis:
-            datum = batch_data[0]
-            preds = model.prediction_data[0,:]
-            top = np.argsort(preds)[-5:]
-            top_answers = reversed([ANSWER_INDEX.get(p) for p in top])
-            fields = [
-                    " ".join([QUESTION_INDEX.get(w) for w in datum.question[1:-1]]),
-                "<img src='../../%s'>" % datum.image_path,
-                model.att_data[0,...],
-                ", ".join(top_answers),
-                ", ".join([ANSWER_INDEX.get(a) for a in datum.answers])
-            ]
-            visualizer.show(fields)
+            #print model.layout_ids
+            #att_blob_names =  \
+            #    [b for b in model.apollo_net.blobs.keys() 
+            #     if "Classify" in b and "softmax" in b]
+            #print att_blob_names
+            #exit()
+            for i_datum in range(10):
+                #print model.module_layout_choices[i_datum]
+                #print model.apollo_net.blobs[model.layout_probs].data[i_datum,...]
+                #print model.layout_ids[i_datum]
+                #print batch_data[i_datum].parses
+                #print model.apollo_net.blobs.keys()
+                #print
+
+                mod_layout_choice = model.module_layout_choices[i_datum]
+                att_blob_name = "Classify_%d_softmax" % (mod_layout_choice * 100)
+
+                datum = batch_data[i_datum]
+                question = " ".join([QUESTION_INDEX.get(w) for w in datum.question[1:-1]]),
+                preds = model.prediction_data[i_datum,:]
+                top = np.argsort(preds)[-5:]
+                top_answers = reversed([ANSWER_INDEX.get(p) for p in top])
+                att_data = model.apollo_net.blobs[att_blob_name].data[i_datum,...]
+                att_data = att_data.reshape((14, 14))
+                #att_data = np.zeros((14, 14))
+                chosen_parse = datum.parses[model.layout_ids[i_datum]]
+
+                fields = [
+                    question,
+                    str(chosen_parse),
+                    "<img src='../../%s'>" % datum.image_path,
+                    att_data,
+                    ", ".join(top_answers),
+                    ", ".join([ANSWER_INDEX.get(a) for a in datum.answers])
+                ]
+                visualizer.show(fields)
 
     if vis:
         visualizer.end()
@@ -137,13 +166,20 @@ def forward(data, model, config, train, vis):
     channels, width, height = data[0].load_image().shape
     questions = np.ones((config.opt.batch_size, max_len)) * NULL_ID
     images = np.zeros((config.opt.batch_size, channels, width, height))
-    layout_reprs = np.zeros((config.opt.batch_size, max_layouts, len(MODULE_INDEX)))
+    layout_reprs = np.zeros(
+            (config.opt.batch_size, max_layouts, len(MODULE_INDEX) + 4))
     for i, datum in enumerate(data):
         questions[i, max_len-len(datum.question):] = datum.question
         images[i, ...] = datum.load_image()
         for i_layout in range(len(datum.layouts)):
-            feats = util.flatten(datum.layouts[i_layout].labels)
-            layout_reprs[i,i_layout,feats] = 1
+            layout = datum.layouts[i_layout]
+            labels = util.flatten(layout.labels)
+            modules = util.flatten(layout.modules)
+            for i_mod in range(len(modules)):
+                if isinstance(modules[i_mod], AttendModule):
+                    layout_reprs[i, i_layout, labels[i_mod]] += 1
+                mt = MODULE_TYPE_INDEX.index(modules[i_mod])
+                layout_reprs[i, i_layout, len(MODULE_INDEX) + mt] += 1
     layouts = [d.layouts for d in data]
 
     #layout_reprs = np.ones((config.opt.batch_size, max_layouts)) * NULL_ID
@@ -152,7 +188,8 @@ def forward(data, model, config, train, vis):
     #            [l.labels[1] for l in datum.layouts]
 
     # apply model
-    model.forward(layouts, layout_reprs, questions, images, dropout=train)
+    model.forward(layouts, layout_reprs, questions, images, dropout=train,
+            deterministic=not train)
 
     # extract predictions
     predictions = list()
@@ -249,18 +286,19 @@ def do_old_iter(data, model, config, train=False, vis=False):
                 model.train()
 
             if vis:
-                datum = batch_data[0]
-                preds = model.prediction_data[0,:]
-                top = np.argsort(preds)[-5:]
-                top_answers = reversed([ANSWER_INDEX.get(p) for p in top])
-                fields = [
-                        " ".join([QUESTION_INDEX.get(w) for w in datum.question[1:-1]]),
-                    "<img src='../../%s'>" % datum.image_path,
-                    model.att_data[0,...],
-                    ", ".join(top_answers),
-                    ", ".join([ANSWER_INDEX.get(a) for a in datum.answers])
-                ]
-                visualizer.show(fields)
+                pass
+                #datum = batch_data[0]
+                #preds = model.prediction_data[0,:]
+                #top = np.argsort(preds)[-5:]
+                #top_answers = reversed([ANSWER_INDEX.get(p) for p in top])
+                #fields = [
+                #        " ".join([QUESTION_INDEX.get(w) for w in datum.question[1:-1]]),
+                #    "<img src='../../%s'>" % datum.image_path,
+                #    model.att_data[0,...],
+                #    ", ".join(top_answers),
+                #    ", ".join([ANSWER_INDEX.get(a) for a in datum.answers])
+                #]
+                #visualizer.show(fields)
 
     if vis:
         visualizer.end()
