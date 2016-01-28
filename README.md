@@ -12,7 +12,7 @@ the framework, refer to:
 
 At present the code supports predicting network layouts from natural-language
 strings, with end-to-end training of modules. Various extensions should be
-straightforward to implement---alternative layout predictors, supervised
+straightforward to implement -- alternative layout predictors, supervised
 training of specific modules, etc. 
 
 If you use this code, please cite the arXiv submission above. Feel free to email
