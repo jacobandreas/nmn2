@@ -17,3 +17,25 @@ training of specific modules, etc.
 
 If you use this code, please cite the arXiv submission above. Feel free to email
 me at [jda@cs.berkeley.edu](mailto:jda@cs.berkeley.edu) if you have questions.
+
+## Installing dependencies
+
+You will need to build **my fork** of the excellent
+[ApolloCaffe](http://apollocaffe.com/) library. This fork may be found at
+[jacobandreas/apollocaffe](https://github.com/jacobandreas/apollocaffe), and 
+provides support for a few Caffe layers that haven't made it into the main 
+Apollo repository. Ordinary Caffe users: note that you will have to install the
+`runcython` Python module in addition to the usual Caffe dependencies.
+
+One this is done, update `APOLLO_ROOT` at the top of `run.sh` to point to your
+ApolloCaffe installation. 
+
+## Downloading data
+
+TODO.
+
+## Running experiments
+
+Different experiments can be run by providing an appropriate configuration file
+on the command line (see the last line of `run.sh`). Various examples for VQA,
+Shapes, and GeoQA are provided in the `config` directory.
