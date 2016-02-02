@@ -45,10 +45,10 @@ instructions](https://github.com/VT-vision-lab/VQA/blob/master/README.md) to
 install the data into this directory. (It should have children `Annotations`,
 `Images`, etc.)
 
-We have modified the structure of the `Images` directory slightly. Images should
-have two subdirectories, `raw` and `conv`. `raw` contains the original VQA
-images, while `conv` contains the result of preprocessing these images with a
-[16-layer VGGNet](http://www.robots.ox.ac.uk/~vgg/research/very_deep/) as
+We have modified the structure of the VQA `Images` directory slightly. `Images`
+should have two subdirectories, `raw` and `conv`. `raw` contains the original
+VQA images, while `conv` contains the result of preprocessing these images with
+a [16-layer VGGNet](http://www.robots.ox.ac.uk/~vgg/research/very_deep/) as
 described in the paper. Every file in the `conv` directory should be of the form
 `COCO_{SETNAME}_{IMAGEID}.jpg.npz`, and 512x14x14 image map in zipped numpy
 format.
