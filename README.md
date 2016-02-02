@@ -34,9 +34,7 @@ ApolloCaffe installation.
 
 ## Downloading data
 
-All experiment data should be placed in the `data` directory. 
-
-(TODO: make this configurable.)
+All experiment data should be placed in the `data` directory.
 
 #### VQA
 
@@ -72,10 +70,16 @@ For GeoQA, they should be named `environments/{fl,ga,...}/training.sps`. Parses
 used in our papers are provided in `extra` and should be installed in the
 appropriate location.
 
-(TODO provide a script for constructing parses automatically.) 
-
 ## Running experiments
+
+You will first need to create directories `vis` and `logs` (which respectively store run logs and visualization code)
 
 Different experiments can be run by providing an appropriate configuration file
 on the command line (see the last line of `run.sh`). Various examples for VQA,
 Shapes, and GeoQA are provided in the `config` directory.
+
+## TODO
+
+- Configurable data location
+- Model checkpointing
+- Script for automatic parse construction
