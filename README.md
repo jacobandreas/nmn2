@@ -6,7 +6,8 @@ shallow network fragments called _modules_ into a deeper structure. These
 modules are jointly trained to be freely composable. For a general overview to
 the framework, refer to:
 
-> [Learning to compose neural networks for question answering](http://arxiv.org/abs/1601.01705).
+> [Learning to compose neural networks for question
+> answering](http://arxiv.org/abs/1601.01705).
 > Jacob Andreas, Marcus Rohrbach, Trevor Darrell and Dan Klein.
 > _arXiv:1601.01705_.
 
@@ -33,7 +34,45 @@ ApolloCaffe installation.
 
 ## Downloading data
 
-TODO.
+All experiment data should be placed in the `data` directory. 
+
+(TODO: make this configurable.)
+
+### VQA
+
+In `data`, create a subdirectory named `vqa`. Follow the [VQA setup
+instructions](https://github.com/VT-vision-lab/VQA/blob/master/README.md) to
+install the data into this directory. (It should have children `Annotations`,
+`Images`, etc.)
+
+We have modified the structure of the `Images` directory slightly. Images should
+have two subdirectories, `raw` and `conv`. `raw` contains the original VQA
+images, while `conv` contains the result of preprocessing these images with a
+[16-layer VGGNet](http://www.robots.ox.ac.uk/~vgg/research/very_deep/) as
+described in the paper. Every file in the `conv` directory should be of the form
+`COCO_{SETNAME}_{IMAGEID}.jpg.npz`, and 512x14x14 image map in zipped numpy
+format.
+
+### GeoQA
+
+Download the GeoQA dataset from the [LSP
+website](http://rtw.ml.cmu.edu/tacl2013_lsp/), and unpack it into `data/geo`.
+
+## Parsing questions
+
+Every dataset fold should contain a file of parsed questions, one per line,
+formatted as S-expressions. If multiple parses are provided, they should be
+semicolon-delimited. As an example, for the question "is the train modern" we
+might have:
+
+    (is modern);(is train);(is (and modern train))
+
+For VQA, these files should be named `Questions/{train2014,val2014,...}.sps2`.
+For GeoQA, they should be named `environments/{fl,...}/training.sps`. Parses
+used in our papers are provided in `extra` and should be installed in the
+appropriate location.
+
+(TODO provide a script for constructing parses automatically.) 
 
 ## Running experiments
 
