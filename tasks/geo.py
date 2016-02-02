@@ -203,8 +203,7 @@ class GeoTaskSet:
                 zip(questions, answers, parse_lists, worlds):
             tokens = ["<s>"] + question.split() + ["</s>"]
 
-            # TODO
-            parse_list = parse_list[-2:]
+            parse_list = parse_list[-config.k_best_parses:]
 
             indexed_question = [QUESTION_INDEX.index(w) for w in tokens]
             indexed_answer = \

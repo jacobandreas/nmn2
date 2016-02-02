@@ -1,8 +1,8 @@
 task:
   name: geo
-  quant: false
+  quant: true
   fold: 1
-  k_best_parses: 8
+  k_best_parses: 2
 
 model:
   name: nmn
