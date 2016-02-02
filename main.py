@@ -203,7 +203,8 @@ def backward(data, model, config, train, vis):
                     np.asarray([d.answers[i] for d in data])
         loss += model.loss(output_i, multiclass=config.opt.multiclass)
 
-    model.train()
+    if train:
+        model.train()
 
     return loss
 
