@@ -52,7 +52,7 @@ def prepare_indices():
             for part in parts:
                 pred_counts[part] += 1
     for pred, count in pred_counts.items():
-        if count >= 10 * MIN_COUNT:
+        if count >= MIN_COUNT:
             MODULE_INDEX.index(pred)
 
     answer_counts = defaultdict(lambda: 0)

@@ -12,7 +12,8 @@ model:
   #layout_hidden: 100
   #att_hidden: 500
   #pred_hidden: 500
-  lstm_hidden: 1000
+  #
+  #lstm_hidden: 1000
   layout_hidden: 100
   att_hidden: 100
   pred_hidden: 500

@@ -98,6 +98,7 @@ class AttendModule(Module):
         net.f(ReLU(relu, bottoms=[sum]))
         net.f(Convolution(mask, (1, 1), 1, bottoms=[relu],
                 param_names=[mask_param_weight, mask_param_bias]))
+                #param_lr_mults=[0.1, 0.1]))
         return mask
 
 
@@ -175,6 +176,10 @@ class ClassifyModule(Module):
         ip = "Classify_%d_ip" % index
         scale = "Classify_%d_scale" % index
 
+        label = "Classify_%d_label" % index
+        label_vec = "Classify_%d_label_vec" % index
+        concat = "Classify_%d_concat" % index
+
         reduction_param_weight = "Classify_reduction_param_weight"
         reduction_param_bias = "Classify_reduction_param_bias"
         ip_param_weight = "Classify_ip_param_weight"
@@ -189,14 +194,26 @@ class ClassifyModule(Module):
         net.f(Tile(tile_mask, axis=1, tiles=channels, bottoms=[copy_softmax]))
         net.f(Eltwise(weight, "PROD", bottoms=[tile_mask, image]))
         net.f(InnerProduct(
-            reduction, 1, axis=2, bottoms=[weight],
-            weight_filler=Filler("constant", 1),
-            bias_filler=Filler("constant", 0),
-            param_lr_mults=[0, 0],
-            param_names=[reduction_param_weight, reduction_param_bias]))
+                reduction, 1, axis=2, bottoms=[weight],
+                weight_filler=Filler("constant", 1),
+                bias_filler=Filler("constant", 0),
+                param_lr_mults=[0, 0],
+                param_names=[reduction_param_weight, reduction_param_bias]))
+
+        #net.f(InnerProduct(
+        #    ip, self.pred_size, bottoms=[reduction],
+        #    param_names=[ip_param_weight, ip_param_bias]))
+        #net.f(Power(scale, scale=0.1, bottoms=[ip]))
+
+        net.f(NumpyData(label, label_data))
+        net.f(Wordvec(
+                label_vec, self.config.att_hidden, len(MODULE_INDEX),
+                bottoms=[label]))
+        net.blobs[label_vec].reshape((batch_size, self.config.att_hidden, 1))
+        net.f(Concat(concat, bottoms=[label_vec, reduction]))
         net.f(InnerProduct(
-            ip, self.pred_size, bottoms=[reduction],
-            param_names=[ip_param_weight, ip_param_bias]))
+                ip, self.pred_size, bottoms=[concat],
+                param_names=[ip_param_weight, ip_param_bias]))
         net.f(Power(scale, scale=0.1, bottoms=[ip]))
 
         return scale
@@ -214,8 +231,8 @@ class MeasureModule(Module):
         ip_param_bias = "Measure_ip_param_bias"
 
         net.f(InnerProduct(
-            ip, self.pred_size, bottoms=[mask],
-            param_names=[ip_param_weight, ip_param_bias]))
+                ip, self.pred_size, bottoms=[mask],
+                param_names=[ip_param_weight, ip_param_bias]))
 
         return ip
 
@@ -474,6 +491,16 @@ class NmnModel:
         prev_hidden = seed
         prev_mem = seed
 
+        # TODO consolidate with module?
+        if hasattr(self.config, "pred_hidden"):
+            pred_size = self.config.pred_hidden
+        else:
+            pred_size = len(ANSWER_INDEX)
+
+        if not hasattr(self.config, "lstm_hidden"):
+            net.f(NumpyData(seed, np.zeros((batch_size, pred_size))))
+            return seed
+
         net.f(NumpyData(seed, np.zeros((batch_size, self.config.lstm_hidden))))
 
         for t in range(length):
@@ -498,12 +525,6 @@ class NmnModel:
 
             prev_hidden = hidden
             prev_mem = mem
-
-        # TODO consolidate with module?
-        if hasattr(self.config, "pred_hidden"):
-            pred_size = self.config.pred_hidden
-        else:
-            pred_size = len(ANSWER_INDEX)
 
         if dropout:
             net.f(Dropout(question_dropout, 0.5, bottoms=[prev_hidden]))
