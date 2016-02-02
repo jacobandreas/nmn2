@@ -1,0 +1,27 @@
+task:
+  name: geo
+  quant: true
+  fold: 1
+  k_best_parses: 2
+
+model:
+  name: nmn
+  lstm_hidden: 256
+  layout_hidden: 100
+
+  combine_question: false
+  att_normalization: local
+
+opt:
+  batch_size: 10
+  iters: 10000
+
+  rho: 0.95
+  eps: 0.000001
+  lr: 2
+  clip: 10.0
+
+  dropout: false
+  multiclass: true
+
+  log_preds: false
