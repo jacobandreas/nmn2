@@ -17,6 +17,7 @@ training of specific modules, etc.
 
 If you use this code, please cite the arXiv submission above. Feel free to email
 me at [jda@cs.berkeley.edu](mailto:jda@cs.berkeley.edu) if you have questions.
+This code is released under the Apache 2 license, provided in `LICENSE.txt`.
 
 ## Installing dependencies
 
