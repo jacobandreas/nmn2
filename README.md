@@ -38,7 +38,7 @@ All experiment data should be placed in the `data` directory.
 
 (TODO: make this configurable.)
 
-### VQA
+#### VQA
 
 In `data`, create a subdirectory named `vqa`. Follow the [VQA setup
 instructions](https://github.com/VT-vision-lab/VQA/blob/master/README.md) to
@@ -53,7 +53,7 @@ described in the paper. Every file in the `conv` directory should be of the form
 `COCO_{SETNAME}_{IMAGEID}.jpg.npz`, and 512x14x14 image map in zipped numpy
 format.
 
-### GeoQA
+#### GeoQA
 
 Download the GeoQA dataset from the [LSP
 website](http://rtw.ml.cmu.edu/tacl2013_lsp/), and unpack it into `data/geo`.
@@ -68,7 +68,7 @@ might have:
     (is modern);(is train);(is (and modern train))
 
 For VQA, these files should be named `Questions/{train2014,val2014,...}.sps2`.
-For GeoQA, they should be named `environments/{fl,...}/training.sps`. Parses
+For GeoQA, they should be named `environments/{fl,ga,...}/training.sps`. Parses
 used in our papers are provided in `extra` and should be installed in the
 appropriate location.
 
