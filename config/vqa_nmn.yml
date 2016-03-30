@@ -2,6 +2,7 @@ task:
   name: vqa
   #debug: 1013
   chooser: cvpr # [null, cvpr, naacl]
+  answers: 2000
 
 model:
   name: nmn
@@ -18,6 +19,7 @@ opt:
   batch_size: 100
   iters: 30
   dropout: true
+  multiclass: false
 
   rho: 0.95
   eps: 0.000001

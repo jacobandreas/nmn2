@@ -29,7 +29,7 @@ def proc_question(question):
     words = ["<s>"] + words + ["</s>"]
     return words
 
-def prepare_indices():
+def prepare_indices(config):
     set_name = "train2014"
 
     word_counts = defaultdict(lambda: 0)
@@ -66,7 +66,7 @@ def prepare_indices():
                 answer_counts[word] += 1
 
     keep_answers = reversed(sorted([(c, a) for a, c in answer_counts.items()]))
-    keep_answers = list(keep_answers)[:1000]
+    keep_answers = list(keep_answers)[:config.answers]
     for count, answer in keep_answers:
         ANSWER_INDEX.index(answer)
 
@@ -152,7 +152,7 @@ class VqaDatum(Datum):
 
 class VqaTask:
     def __init__(self, config):
-        prepare_indices()
+        prepare_indices(config.task)
         logging.debug("prepared indices")
 
         modules = {
