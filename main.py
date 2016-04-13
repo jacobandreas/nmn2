@@ -105,8 +105,9 @@ if __name__ == "__main__":
         epoch_val_ll, epoch_val_acc = eval_iter(val_data_by_query)
         epoch_test_ll, epoch_test_acc = eval_iter(test_data_by_query)
 
-        logging.info("%0.4f\t%0.4f\t|\t%0.4f\t%0.4f", epoch_train_ll,
-                epoch_val_ll, epoch_train_acc, epoch_val_acc)
+        logging.info("%0.4f\t%0.4f\t%0.4f\t|\t%0.4f\t%0.4f\t%0.4f", 
+                epoch_train_ll, epoch_val_ll, epoch_test_ll,
+                epoch_train_acc, epoch_val_acc, epoch_test_acc)
         logging.info("%s", epoch_acc_by_size)
         logging.info("%s", epoch_counts_by_size)
 
