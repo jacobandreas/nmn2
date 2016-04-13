@@ -1,0 +1,116 @@
+math_nmn: &math_nmn
+  model: NMN
+  input_type: VectorInput()
+  output_type: SquaredError()
+  model_params:
+    modules:
+      "+": MLPModule(100, 4, 32, 2)
+      "-": MLPModule(100, 4, 32, 2)
+      "*": MLPModule(100, 4, 32, 2)
+      "x": MLPModule(100, 2, 32, 2)
+      "y": MLPModule(100, 2, 32, 2)
+      "_output": MLPModule(100, 2, 32, 1)
+  corpus: math
+  train_size: med
+
+math_lstm: &math_lstm
+  model: LSTM
+  model_params:
+    batch_size: 100
+    world_size: 2
+    vocab_size: 7 # + - * x y ( )
+    hidden_size: 32
+    output_size: 1
+  corpus: math
+  train_size: large
+
+shapes_nmn: &shapes_nmn
+  model: NMN
+  input_type: ImageInput()
+  output_type: Classification()
+  model_params:
+    module_builder: 
+      class: ShapeModuleBuilder
+      batch_size: 64
+      image_size: 30
+      channels: 3 
+      mid_filters: 8
+      out_filters: 1
+      input_mid_filter_size: 5
+      input_out_filter_size: 3
+      filter_size: 3
+      input_mid_pool: 5
+      input_out_pool: 2
+      #input_mid_pool: 1
+      #input_out_pool: 1
+      hidden_size: 32
+      vocab_size: 2
+    #modules:
+    #  count: MLPModule(300, 32 * 9, 32, 17, output_nonlinearity=nonlinearities.softmax)
+    #  shape: MLPModule(300, 32 * 9, 32, 17, output_nonlinearity=nonlinearities.softmax)
+    #  color: MLPModule(300, 32 * 9, 32, 17, output_nonlinearity=nonlinearities.softmax)
+    #  size: MLPModule(300, 32 * 9, 32, 17, output_nonlinearity=nonlinearities.softmax)
+
+    #  count-: MLPModule(300, 32 * 9, 32, 17, output_nonlinearity=nonlinearities.softmax)
+    #  shape-: MLPModule(300, 32 * 9, 32, 17, output_nonlinearity=nonlinearities.softmax)
+    #  color-: MLPModule(300, 32 * 9, 32, 17, output_nonlinearity=nonlinearities.softmax)
+    #  size-: MLPModule(300, 32 * 9, 32, 17, output_nonlinearity=nonlinearities.softmax)
+    #  count--: MLPModule(300, 32 * 9, 32, 17, output_nonlinearity=nonlinearities.softmax)
+    #  shape--: MLPModule(300, 32 * 9, 32, 17, output_nonlinearity=nonlinearities.softmax)
+    #  color--: MLPModule(300, 32 * 9, 32, 17, output_nonlinearity=nonlinearities.softmax)
+    #  size--: MLPModule(300, 32 * 9, 32, 17, output_nonlinearity=nonlinearities.softmax)
+
+    #  next_to: ConvModule(300, 32, 3, 32, 3, 1, 1)
+    #  left_of: ConvModule(300, 32, 3, 32, 3, 1, 1)
+    #  right_of: ConvModule(300, 32, 3, 32, 3, 1, 1)
+    #  above: ConvModule(300, 32, 3, 32, 3, 1, 1)
+    #  below: ConvModule(300, 32, 3, 32, 3, 1, 1)
+
+    #  left_of-: ConvModule(300, 32, 3, 32, 3, 1, 1)
+    #  right_of-: ConvModule(300, 32, 3, 32, 3, 1, 1)
+    #  above-: ConvModule(300, 32, 3, 32, 3, 1, 1)
+    #  below-: ConvModule(300, 32, 3, 32, 3, 1, 1)
+    #  left_of--: ConvModule(300, 32, 3, 32, 3, 1, 1)
+    #  right_of--: ConvModule(300, 32, 3, 32, 3, 1, 1)
+    #  above--: ConvModule(300, 32, 3, 32, 3, 1, 1)
+    #  below--: ConvModule(300, 32, 3, 32, 3, 1, 1)
+
+    #  or: ConvModule(300, 64, 3, 32, 3, 1, 1)
+    #  and: ConvModule(300, 64, 3, 32, 3, 1, 1)
+    #  xor: ConvModule(300, 64, 3, 32, 3, 1, 1)
+    #  
+    #  small: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  big: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  red: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  green: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  blue: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  circle: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  square: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  triangle: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  nothing: ConvModule(300, 3, 60, 32, 3, 5, 4)
+
+    #  small-: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  big-: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  red-: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  green-: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  blue-: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  circle-: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  square-: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  triangle-: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  nothing-: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  small--: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  big--: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  red--: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  green--: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  blue--: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  circle--: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  square--: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  triangle--: ConvModule(300, 3, 60, 32, 3, 5, 4)
+    #  nothing--: ConvModule(300, 3, 60, 32, 3, 5, 4)
+
+    #  _output: IdentityModule()
+
+  corpus: shapes
+  train_size: large
+
+experiment: *shapes_nmn
