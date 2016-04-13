@@ -191,6 +191,22 @@ class ConvModule:
     if self.tie:
       np.save(dest + "/" + name, self.w_conv1.get_value())
 
+class CombineModule:
+  def __init__(self):
+    pass
+
+  def instantiate(self, *inputs):
+    l_first = layers.ElemwiseMergeLayer([input.l_output for input in inputs],
+        theano.tensor.minimum)
+    l_threshold = layers.NonlinearityLayer(l_first)
+    l_inputs = [l_input for input in inputs for l_input in input.l_inputs]
+    l_output = l_threshold
+    return mod_nmn.Network(l_inputs, l_output)
+
+  def write_weights(self, dest, name):
+    pass
+
+
 class MLPModule:
 
   def __init__(self, batch_size, input_size, hidden_size, output_size,
