@@ -34,7 +34,7 @@ shapes_nmn: &shapes_nmn
       batch_size: 64
       image_size: 30
       channels: 3 
-      mid_filters: 8
+      mid_filters: 32
       out_filters: 1
       input_mid_filter_size: 5
       input_out_filter_size: 3
