@@ -1,85 +1,22 @@
-# Neural module networks
+# Neural module networks -- SHAPES experiments
 
-This library provides code for training and evaluating _neural module networks_
-(NMNs). An NMN is a neural network that is assembled dynamically by composing
-shallow network fragments called _modules_ into a deeper structure. These
-modules are jointly trained to be freely composable. For a general overview to
-the framework, refer to:
 
-> [Learning to compose neural networks for question
-> answering](http://arxiv.org/abs/1601.01705).
-> Jacob Andreas, Marcus Rohrbach, Trevor Darrell and Dan Klein.
-> _arXiv:1601.01705_.
+This branch contains data and horrible, slow Theano code for the SHAPES
+experiments described in the paper:
+> [Neural module networks](http://arxiv.org/abs/1511.02799). Jacob Andreas,
+> Marcus Rohrbach, Trevor Darrell and Dan Klein. CVPR 2016. 
+For details about the general NMN framework (and code for other tasks), look at
+the `master` branch.
 
-At present the code supports predicting network layouts from natural-language
-strings, with end-to-end training of modules. Various extensions should be
-straightforward to implement&mdash;alternative layout predictors, supervised
-training of specific modules, etc. 
+To run our experiments, call
 
-If you use this code, please cite the arXiv submission above. Feel free to email
-me at [jda@cs.berkeley.edu](mailto:jda@cs.berkeley.edu) if you have questions.
-This code is released under the Apache 2 license, provided in `LICENSE.txt`.
+    python main.py
 
-## Installing dependencies
+You will need [Lasagne v0.1](https://pypi.python.org/pypi/Lasagne/0.1) and its
+dependencies.
 
-You will need to build **my fork** of the excellent
-[ApolloCaffe](http://apollocaffe.com/) library. This fork may be found at
-[jacobandreas/apollocaffe](https://github.com/jacobandreas/apollocaffe), and 
-provides support for a few Caffe layers that haven't made it into the main 
-Apollo repository. Ordinary Caffe users: note that you will have to install the
-`runcython` Python module in addition to the usual Caffe dependencies.
+The optimizer seems to occasionally get stuck in local optima, so try restarting
+if it doesn't converge the first time.
 
-One this is done, update `APOLLO_ROOT` at the top of `run.sh` to point to your
-ApolloCaffe installation. 
-
-## Downloading data
-
-All experiment data should be placed in the `data` directory.
-
-#### VQA
-
-In `data`, create a subdirectory named `vqa`. Follow the [VQA setup
-instructions](https://github.com/VT-vision-lab/VQA/blob/master/README.md) to
-install the data into this directory. (It should have children `Annotations`,
-`Images`, etc.)
-
-We have modified the structure of the VQA `Images` directory slightly. `Images`
-should have two subdirectories, `raw` and `conv`. `raw` contains the original
-VQA images, while `conv` contains the result of preprocessing these images with
-a [16-layer VGGNet](http://www.robots.ox.ac.uk/~vgg/research/very_deep/) as
-described in the paper. Every file in the `conv` directory should be of the form
-`COCO_{SETNAME}_{IMAGEID}.jpg.npz`, and contain a 512x14x14 image map in zipped 
-numpy format.
-
-#### GeoQA
-
-Download the GeoQA dataset from the [LSP
-website](http://rtw.ml.cmu.edu/tacl2013_lsp/), and unpack it into `data/geo`.
-
-## Parsing questions
-
-Every dataset fold should contain a file of parsed questions, one per line,
-formatted as S-expressions. If multiple parses are provided, they should be
-semicolon-delimited. As an example, for the question "is the train modern" we
-might have:
-
-    (is modern);(is train);(is (and modern train))
-
-For VQA, these files should be named `Questions/{train2014,val2014,...}.sps2`.
-For GeoQA, they should be named `environments/{fl,ga,...}/training.sps`. Parses
-used in our papers are provided in `extra` and should be installed in the
-appropriate location.
-
-## Running experiments
-
-You will first need to create directories `vis` and `logs` (which respectively store run logs and visualization code)
-
-Different experiments can be run by providing an appropriate configuration file
-on the command line (see the last line of `run.sh`). Various examples for VQA,
-Shapes, and GeoQA are provided in the `config` directory.
-
-## TODO
-
-- Configurable data location
-- Model checkpointing
-- Script for automatic parse construction
+Code used to generate the dataset can be found in the `data` directory. See
+`visualize.py` for examples of how to array data into actual images.
