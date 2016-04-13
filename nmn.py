@@ -70,10 +70,6 @@ class Conv1Module:
         self.b_conv1 = theano.shared(zero.sample((filter_count_1,)))
 
     def instantiate(self, *inputs):
-        #print
-        #print "inputs are", [i.l_output.output_shape for i in inputs]
-        #print "my sizes are", (self.batch_size, self.channels, self.image_size)
-
         if len(inputs) == 0:
             l_first = layers.InputLayer((self.batch_size, self.channels, self.image_size, self.image_size))
             l_inputs = [l_first]
@@ -83,9 +79,7 @@ class Conv1Module:
 
         l_conv1 = layers.Conv2DLayer(l_first, self.filter_count_1,
                 self.filter_size_1,
-                W=self.w_conv1, b=self.b_conv1, border_mode="same")
-        #l_conv1 = lasagne.layers.cuda_convnet.Conv2DCCLayer(l_first, self.filter_count_1,
-        #        self.filter_size, border_mode="same")
+                W=self.w_conv1, b=self.b_conv1, pad="same")
         if self.pool_size_1 > 1:
             l_pool1 = layers.MaxPool2DLayer(l_conv1, self.pool_size_1)
             l_1 = l_pool1
@@ -130,10 +124,6 @@ class ConvModule:
             self.b_conv2 = zero
 
     def instantiate(self, *inputs):
-        #print
-        #print "inputs are", [i.l_output.output_shape for i in inputs]
-        #print "my sizes are", (self.batch_size, self.channels, self.image_size)
-
         if len(inputs) == 0:
             l_first = layers.InputLayer((self.batch_size, self.channels, self.image_size, self.image_size))
             l_inputs = [l_first]
@@ -143,9 +133,7 @@ class ConvModule:
 
         l_conv1 = layers.Conv2DLayer(l_first, self.filter_count_1,
                 self.filter_size_1,
-                W=self.w_conv1, b=self.b_conv1, border_mode="same")
-        #l_conv1 = lasagne.layers.cuda_convnet.Conv2DCCLayer(l_first, self.filter_count_1,
-        #        self.filter_size, border_mode="same")
+                W=self.w_conv1, b=self.b_conv1, pad="same")
         if self.pool_size_1 > 1:
             l_pool1 = layers.MaxPool2DLayer(l_conv1, self.pool_size_1)
             l_1 = l_pool1
@@ -153,7 +141,7 @@ class ConvModule:
             l_1 = l_conv1
 
         l_conv2 = layers.Conv2DLayer(l_1, self.filter_count_2, self.filter_size_2,
-                W=self.w_conv2, b=self.b_conv2, border_mode="same")
+                W=self.w_conv2, b=self.b_conv2, pad="same")
         if self.pool_size_2 > 1:
             l_pool2 = layers.MaxPool2DLayer(l_conv2, self.pool_size_2)
             l_2 = l_pool2
@@ -161,9 +149,6 @@ class ConvModule:
             l_2 = l_conv2
 
         l_output = l_2
-
-        #l_shape = layers.ReshapeLayer(l_2, (self.batch_size, 9))
-        #l_output = l_shape
 
         return Network(l_inputs, l_output)
 
@@ -190,15 +175,10 @@ class MLPModule:
         self.b_output = theano.shared(zero.sample((output_size,)))
 
     def instantiate(self, *inputs):
-        #print
-        #print "inputs are", [i.l_output.output_shape for i in inputs]
-        #print "my sizes are", (self.batch_size, self.input_size)
-
         if len(inputs) == 0:
             l_first = layers.InputLayer((self.batch_size, self.input_size))
             l_inputs = [l_first]
         else:
-            #print [i.l_output.output_shape for i in inputs], "*"
             l_first = layers.ConcatLayer([input.l_output for input in inputs])
             l_inputs = [l_input for input in inputs for l_input in input.l_inputs]
 

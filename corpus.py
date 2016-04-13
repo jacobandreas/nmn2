@@ -38,7 +38,7 @@ def load_shapes(set_name):
     data = []
     index = {"true": 1, "false": 0}
     with open("data/shapes/%s.query" % set_name) as query_f, \
-             open("data/shapes/%s.output" % set_name) as output_f:
+         open("data/shapes/%s.output" % set_name) as output_f:
         inputs = np.load("data/shapes/%s.input.npy" % set_name)
         for query_str, i_input, output_str in zip(query_f, range(inputs.shape[0]), output_f):
             query = parse_query(query_str.strip())

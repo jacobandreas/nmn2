@@ -11,14 +11,11 @@ import yaml
 
 N_QUERY_INSTS = 64
 
-N_TRAIN_TINY    = 10
-N_TRAIN_SMALL = 100
-N_TRAIN_MED     = 1000
-N_TRAIN_LARGE = 10000
+N_TRAIN_TINY    = 1
+N_TRAIN_SMALL = 10
+N_TRAIN_MED     = 100
+N_TRAIN_LARGE = 1000
 N_TRAIN_ALL     = N_TRAIN_MED
-
-N_TEST                = 1000
-N_VAL                 = 1000
 
 SHAPE_CIRCLE = 0
 SHAPE_SQUARE = 1
@@ -326,7 +323,7 @@ if __name__ == "__main__":
         if images is None:
                 logging.warn("excluding %s", pp(query))
                 continue
-        val_data += images
+        test_data += images
 
     train_data_tiny = train_data[:N_TRAIN_TINY * N_QUERY_INSTS]
     train_data_small = train_data[:N_TRAIN_SMALL * N_QUERY_INSTS]

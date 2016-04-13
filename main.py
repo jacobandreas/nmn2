@@ -13,9 +13,7 @@ import numpy as np
 import theano
 import yaml
 
-#theano.config.optimizer_including = "local_log_softmax"
 #theano.config.optimizer = "fast_compile"
-#theano.config.optimizer = "stabilization"
 
 LOG_CONFIG = "log.yaml"
 EXPERIMENT_CONFIG = "config.yaml"
@@ -45,8 +43,6 @@ def eval_iter(val_data_by_query):
     epoch_val_ll = 0.
     epoch_val_acc = 0.
 
-    epoch_acc_by_size = defaultdict(lambda: 0)
-    epoch_counts_by_size = defaultdict(lambda: 0)
     for query, data in val_data_by_query.items():
         data = data[:256]
         batch_inputs = np.asarray([datum.input_ for datum in data], dtype=input_type.dtype)
@@ -57,8 +53,8 @@ def eval_iter(val_data_by_query):
         acc_here = 1. * sum(np.equal(batch_pred, batch_outputs)) / len(data)
         epoch_val_acc += acc_here
 
-        epoch_val_ll /= len(val_data_by_query)
-        epoch_val_acc /= len(val_data_by_query)
+    epoch_val_ll /= len(val_data_by_query)
+    epoch_val_acc /= len(val_data_by_query)
 
     return epoch_val_ll, epoch_val_acc
 
@@ -95,6 +91,10 @@ if __name__ == "__main__":
     for datum in test_data:
         test_data_by_query[datum.query].append(datum)
 
+    print len(train_data_by_query)
+    print len(val_data_by_query)
+    print len(test_data_by_query)
+
     train_queries = list(train_data_by_query.keys())
 
     for i in range(40000):
@@ -108,8 +108,6 @@ if __name__ == "__main__":
         logging.info("%0.4f\t%0.4f\t%0.4f\t|\t%0.4f\t%0.4f\t%0.4f", 
                 epoch_train_ll, epoch_val_ll, epoch_test_ll,
                 epoch_train_acc, epoch_val_acc, epoch_test_acc)
-        logging.info("%s", epoch_acc_by_size)
-        logging.info("%s", epoch_counts_by_size)
 
         if i % 10 == 0:
             model.serialize("model.txt")
