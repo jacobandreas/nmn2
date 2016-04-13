@@ -17,9 +17,3 @@ for line in sys.stdin:
         else:
             en_words.append(word.replace("_", " "))
     print " ".join(en_words)
-    #if len(en_words) == 3:
-    #    print "is " + en_words[1] + " " + en_words[2]
-    #elif len(en_words) == 4:
-    #    print "is " + " ".join(en_words)
-    #else:
-    #    print words
