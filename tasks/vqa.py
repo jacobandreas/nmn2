@@ -249,6 +249,9 @@ class VqaTaskSet:
                         parses = parses[:1]
                 elif not config.multi:
                     parses = parses[:1]
+                else:
+                    parses = parses[:2]
+                    #logging.warn("MULTI 2")
                 layouts = [parse_to_layout(p, config, modules) for p in parses]
                 image_id = question["image_id"]
                 try:

@@ -545,7 +545,7 @@ class NmnModel:
         #net.f(InnerProduct(ip, len(ANSWER_INDEX), bottoms=[relu]))
         #return ip
 
-        net.f(Eltwise(sum, "SUM", bottoms=[question_hidden, nmn_hidden]))
+        net.f(Eltwise(sum, "PROD", bottoms=[question_hidden, nmn_hidden]))
 
         if hasattr(self.config, "pred_hidden"):
             net.f(ReLU(relu, bottoms=[sum]))

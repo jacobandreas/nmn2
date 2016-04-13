@@ -31,8 +31,8 @@ def main():
                 do_iter(task.train, model, config, train=True)
         val_loss, val_acc, val_predictions = \
                 do_iter(task.val, model, config, vis=True)
-        #test_loss, test_acc, test_predictions = \
-        #        do_iter(task.test, model, config)
+        test_loss, test_acc, test_predictions = \
+                do_iter(task.test, model, config)
         test_loss, test_acc = 0, 0
 
         logging.info(
@@ -44,8 +44,8 @@ def main():
         with open("logs/val_predictions_%d.json" % i_epoch, "w") as pred_f:
             print >>pred_f, json.dumps(val_predictions)
 
-        #with open("logs/test_predictions_%d.json" % i_epoch, "w") as pred_f:
-        #    print >>pred_f, json.dumps(test_predictions)
+        with open("logs/test_predictions_%d.json" % i_epoch, "w") as pred_f:
+            print >>pred_f, json.dumps(test_predictions)
 
 def configure():
     apollocaffe.set_random_seed(0)
