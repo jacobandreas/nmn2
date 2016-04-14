@@ -10,6 +10,8 @@ the framework, refer to:
 > Jacob Andreas, Marcus Rohrbach, Trevor Darrell and Dan Klein.
 > CVPR 2016.
 
+<br>
+
 > [Learning to compose neural networks for question
 > answering](http://arxiv.org/abs/1601.01705).
 > Jacob Andreas, Marcus Rohrbach, Trevor Darrell and Dan Klein.
