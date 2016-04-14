@@ -6,19 +6,24 @@ shallow network fragments called _modules_ into a deeper structure. These
 modules are jointly trained to be freely composable. For a general overview to
 the framework, refer to:
 
+> [Neural module networks](http://arxiv.org/abs/1511.02799).
+> Jacob Andreas, Marcus Rohrbach, Trevor Darrell and Dan Klein.
+> CVPR 2016.
+
 > [Learning to compose neural networks for question
 > answering](http://arxiv.org/abs/1601.01705).
 > Jacob Andreas, Marcus Rohrbach, Trevor Darrell and Dan Klein.
-> _arXiv:1601.01705_.
+> NAACL 2016.
 
 At present the code supports predicting network layouts from natural-language
 strings, with end-to-end training of modules. Various extensions should be
 straightforward to implement&mdash;alternative layout predictors, supervised
 training of specific modules, etc. 
 
-If you use this code, please cite the arXiv submission above. Feel free to email
-me at [jda@cs.berkeley.edu](mailto:jda@cs.berkeley.edu) if you have questions.
-This code is released under the Apache 2 license, provided in `LICENSE.txt`.
+Please cite the CVPR paper for the general NMN framework, and the NAACL paper
+for dynamic structure selection. Feel free to email me at
+[jda@cs.berkeley.edu](mailto:jda@cs.berkeley.edu) if you have questions.  This
+code is released under the Apache 2 license, provided in `LICENSE.txt`.
 
 ## Installing dependencies
 
