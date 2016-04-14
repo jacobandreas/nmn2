@@ -8,8 +8,7 @@ the framework, refer to:
 
 > [Neural module networks](http://arxiv.org/abs/1511.02799).
 > Jacob Andreas, Marcus Rohrbach, Trevor Darrell and Dan Klein.
-> CVPR 2016.
-
+> CVPR 2016. <br>
 
 > [Learning to compose neural networks for question
 > answering](http://arxiv.org/abs/1601.01705).
