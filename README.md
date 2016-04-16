@@ -1,4 +1,4 @@
-# Neural module networks -- SHAPES experiments
+# Neural module networks: SHAPES experiments
 
 
 This branch contains data and horrible, slow Theano code for the SHAPES
