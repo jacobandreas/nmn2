@@ -3,8 +3,10 @@
 
 This branch contains data and horrible, slow Theano code for the SHAPES
 experiments described in the paper:
+
 > [Neural module networks](http://arxiv.org/abs/1511.02799). Jacob Andreas,
 > Marcus Rohrbach, Trevor Darrell and Dan Klein. CVPR 2016. 
+
 For details about the general NMN framework (and code for other tasks), look at
 the `master` branch.
 
