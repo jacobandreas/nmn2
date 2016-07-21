@@ -85,8 +85,9 @@ Different experiments can be run by providing an appropriate configuration file
 on the command line (see the last line of `run.sh`). Examples for VQA and GeoQA
 are provided in the `config` directory.
 
-Looking for SHAPES? I haven't finished integrating it with the rest of the code, 
-but check out the `shapes` branch of this repository for data and code.
+Looking for SHAPES? I haven't finished integrating it with the rest of the 
+codebase, but check out the `shapes` branch of this repository for data and 
+code.
 
 ## TODO
 
