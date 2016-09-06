@@ -93,4 +93,3 @@ code.
 
 - Configurable data location
 - Model checkpointing
-- Script for automatic parse construction
