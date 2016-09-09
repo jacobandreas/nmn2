@@ -36,7 +36,11 @@ Apollo repository. Ordinary Caffe users: note that you will have to install the
 `runcython` Python module in addition to the usual Caffe dependencies.
 
 One this is done, update `APOLLO_ROOT` at the top of `run.sh` to point to your
-ApolloCaffe installation. 
+ApolloCaffe installation.
+
+You will also need to install the following packages:
+
+    colorlogs, sexpdata
 
 ## Downloading data
 
