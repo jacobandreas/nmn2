@@ -133,6 +133,16 @@ class LfParser(object):
 
             else:
                 query_lines.append(sline)
+                
+"""
+This script consumes output from the Stanford parser on stdin. I run the parser as
+
+    java -mx150m -cp "$scriptdir/*:" edu.stanford.nlp.parser.lexparser.LexicalizedParser \
+     -outputFormat "words,typedDependencies" -outputFormatOptions "stem,collapsedDependencies,includeTags" \
+     -sentences newline \
+     edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz \
+     $*
+"""
 
 if __name__ == "__main__":
     #parser = LfParser(use_relations=True, max_conjuncts=2, max_leaves=None)
