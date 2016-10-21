@@ -78,7 +78,8 @@ might have:
 For VQA, these files should be named `Questions/{train2014,val2014,...}.sps2`.
 For GeoQA, they should be named `environments/{fl,ga,...}/training.sps`. Parses
 used in our papers are provided in `extra` and should be installed in the
-appropriate location.
+appropriate location. The VQA parser script is also located under `extra/vqa`;
+instructions for running are provided in the body of the script.
 
 ## Running experiments
 
