@@ -59,7 +59,8 @@ VQA images, while `conv` contains the result of preprocessing these images with
 a [16-layer VGGNet](http://www.robots.ox.ac.uk/~vgg/research/very_deep/) as
 described in the paper. Every file in the `conv` directory should be of the form
 `COCO_{SETNAME}_{IMAGEID}.jpg.npz`, and contain a 512x14x14 image map in zipped 
-numpy format.
+numpy format. Here's a [gist](https://gist.github.com/jacobandreas/897987ac03f8d4b9ea4b9e44affa00e7)
+with the code I use for doing the extraction.
 
 #### GeoQA
 
