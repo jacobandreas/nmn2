@@ -36,7 +36,11 @@ Apollo repository. Ordinary Caffe users: note that you will have to install the
 `runcython` Python module in addition to the usual Caffe dependencies.
 
 One this is done, update `APOLLO_ROOT` at the top of `run.sh` to point to your
-ApolloCaffe installation. 
+ApolloCaffe installation.
+
+You will also need to install the following packages:
+
+    colorlogs, sexpdata
 
 ## Downloading data
 
@@ -55,7 +59,8 @@ VQA images, while `conv` contains the result of preprocessing these images with
 a [16-layer VGGNet](http://www.robots.ox.ac.uk/~vgg/research/very_deep/) as
 described in the paper. Every file in the `conv` directory should be of the form
 `COCO_{SETNAME}_{IMAGEID}.jpg.npz`, and contain a 512x14x14 image map in zipped 
-numpy format.
+numpy format. Here's a [gist](https://gist.github.com/jacobandreas/897987ac03f8d4b9ea4b9e44affa00e7)
+with the code I use for doing the extraction.
 
 #### GeoQA
 
@@ -74,7 +79,8 @@ might have:
 For VQA, these files should be named `Questions/{train2014,val2014,...}.sps2`.
 For GeoQA, they should be named `environments/{fl,ga,...}/training.sps`. Parses
 used in our papers are provided in `extra` and should be installed in the
-appropriate location.
+appropriate location. The VQA parser script is also located under `extra/vqa`;
+instructions for running are provided in the body of the script.
 
 ## Running experiments
 
