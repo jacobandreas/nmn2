@@ -1,5 +1,9 @@
 # Neural module networks
 
+**UPDATE 22 Jun 2017: Code for our end-to-end module network framework is 
+available at https://github.com/ronghanghu/n2nmn. This works better and is
+easier to set up. Use it!**
+
 This library provides code for training and evaluating _neural module networks_
 (NMNs). An NMN is a neural network that is assembled dynamically by composing
 shallow network fragments called _modules_ into a deeper structure. These
